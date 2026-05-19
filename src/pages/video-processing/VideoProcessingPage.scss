@@ -15,7 +15,19 @@
     overflow: hidden;
   }
 
-  // ── Left column: video + timeline ────────────────────────────────────────
+  // ── Left column: transcript ───────────────────────────────────────────────
+  &__sidebar {
+    width: 520px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    @media (max-width: 1400px) { width: 440px; }
+    @media (max-width: 1100px) { width: 380px; }
+  }
+
+  // ── Right column: video ───────────────────────────────────────────────────
   &__main {
     display: flex;
     flex-direction: column;
@@ -27,19 +39,8 @@
   &__video-area {
     flex: 1;
     min-height: 0;
-    padding: $space-lg;
+    padding: $space-md;
     background: $color-bg-base;
-  }
-
-  // ── Right column: transcript ─────────────────────────────────────────────
-  &__sidebar {
-    width: 380px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-
-    @media (max-width: 1200px) { width: 320px; }
   }
 
   // ── Transcription states ─────────────────────────────────────────────────
@@ -52,13 +53,12 @@
     gap: $space-md;
     padding: $space-xl;
     text-align: center;
-    background: $color-bg-panel;
-    border-left: 1px solid $color-border;
+    background: $color-bg-base;
+    border-right: 1px solid $color-border;
   }
 
   &__tx-prompt {
     @extend %tx-center;
-
     p { margin: 0; }
   }
 

@@ -1,40 +1,42 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { Button, Input, Tag, Tooltip, Empty, Typography, Space } from 'antd';
+import { Input, Button, Space } from 'antd';
 import {
-  PlusOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  CheckOutlined,
-  CloseOutlined,
-  SearchOutlined,
-  SyncOutlined,
+  PlusOutlined, DeleteOutlined, EditOutlined,
+  CheckOutlined, CloseOutlined,
 } from '@ant-design/icons';
 import './TranscriptEditor.scss';
 
-const { Text } = Typography;
-
 export interface TranscriptSegment {
-  id: string;
-  startTime: number;  // seconds
-  endTime: number;
-  text: string;
+  id:          string;
+  startTime:   number;
+  endTime:     number;
+  text:        string;
   translation?: string;
+  speaker?:    string;
 }
 
 interface TranscriptEditorProps {
-  segments: TranscriptSegment[];
-  translating?: boolean;
-  currentTime?: number;
-  onChange?: (segments: TranscriptSegment[]) => void;
+  segments:        TranscriptSegment[];
+  translating?:    boolean;
+  currentTime?:    number;
+  onChange?:       (segments: TranscriptSegment[]) => void;
   onSegmentClick?: (startTime: number) => void;
 }
 
-function formatTimecode(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  const ms = Math.floor((seconds % 1) * 1000);
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
+export const SPEAKER_COLORS = [
+  '#1677ff', '#3dbf9a', '#fa8c16', '#722ed1', '#eb2f96', '#13c2c2',
+];
+
+export function getSpeakerColor(speaker?: string): string {
+  if (!speaker) return SPEAKER_COLORS[0];
+  const num = parseInt(speaker.replace(/\D/g, '') || '1', 10);
+  return SPEAKER_COLORS[(num - 1) % SPEAKER_COLORS.length];
+}
+
+function formatSegTime(s: number): string {
+  const m   = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toFixed(1).padStart(4, '0')}`;
 }
 
 function parseTimecode(tc: string): number {
@@ -51,251 +53,189 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({
   onChange,
   onSegmentClick,
 }) => {
-  const [editingId, setEditingId]   = useState<string | null>(null);
-  const [editText, setEditText]     = useState('');
-  const [searchText, setSearchText] = useState('');
-  const [autoScroll, setAutoScroll] = useState(true);
-  // timecode inline editing: 'start' | 'end' per segment
-  const [editingTc, setEditingTc]   = useState<{ id: string; field: 'start' | 'end' } | null>(null);
-  const [editTcValue, setEditTcValue] = useState('');
+  const [editingId,   setEditingId]   = useState<string | null>(null);
+  const [editText,    setEditText]    = useState('');
+  const [editField,   setEditField]   = useState<'text' | 'translation'>('text');
   const activeRef = useRef<HTMLDivElement>(null);
+  const [autoScroll, setAutoScroll]   = useState(true);
 
-  // Active segment based on currentTime
   const activeSegment = segments.find(
-    s => currentTime >= s.startTime && currentTime <= s.endTime
+    s => currentTime >= s.startTime && currentTime <= s.endTime,
   );
 
-  // Scroll active segment into view
   React.useEffect(() => {
     if (autoScroll && activeRef.current) {
       activeRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [activeSegment?.id, autoScroll]);
 
-  const filteredSegments = searchText
-    ? segments.filter(s => s.text.includes(searchText) || s.translation?.includes(searchText))
-    : segments;
-
-  const handleStartEdit = useCallback((seg: TranscriptSegment) => {
+  const handleStartEdit = useCallback((seg: TranscriptSegment, field: 'text' | 'translation') => {
     setEditingId(seg.id);
-    setEditText(seg.text);
+    setEditField(field);
+    setEditText(field === 'text' ? seg.text : (seg.translation ?? ''));
   }, []);
 
   const handleSaveEdit = useCallback((id: string) => {
-    const updated = segments.map(s =>
-      s.id === id ? { ...s, text: editText } : s
-    );
+    const updated = segments.map(s => {
+      if (s.id !== id) return s;
+      return editField === 'text' ? { ...s, text: editText } : { ...s, translation: editText };
+    });
     onChange?.(updated);
     setEditingId(null);
-  }, [segments, editText, onChange]);
+  }, [segments, editText, editField, onChange]);
 
   const handleCancelEdit = useCallback(() => {
     setEditingId(null);
     setEditText('');
   }, []);
 
-  const handleDelete = useCallback((id: string) => {
+  const handleDelete = useCallback((id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     onChange?.(segments.filter(s => s.id !== id));
   }, [segments, onChange]);
 
-  const handleStartTcEdit = useCallback((seg: TranscriptSegment, field: 'start' | 'end', e: React.MouseEvent) => {
+  const handleAddAfter = useCallback((index: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    setEditingTc({ id: seg.id, field });
-    setEditTcValue(formatTimecode(field === 'start' ? seg.startTime : seg.endTime));
-  }, []);
-
-  const handleSaveTcEdit = useCallback((seg: TranscriptSegment) => {
-    if (!editingTc) return;
-    const parsed = parseTimecode(editTcValue);
-    if (isNaN(parsed) || parsed < 0) { setEditingTc(null); return; }
-    const updated = segments.map(s => {
-      if (s.id !== seg.id) return s;
-      if (editingTc.field === 'start') return { ...s, startTime: Math.min(parsed, s.endTime - 0.1) };
-      return { ...s, endTime: Math.max(parsed, s.startTime + 0.1) };
-    });
-    onChange?.(updated);
-    setEditingTc(null);
-  }, [editingTc, editTcValue, segments, onChange]);
-
-  const handleAddAfter = useCallback((index: number) => {
-    const prev = segments[index];
-    const next = segments[index + 1];
+    const prev      = segments[index];
+    const next      = segments[index + 1];
     const startTime = prev ? prev.endTime : 0;
-    const endTime = next ? Math.min(next.startTime, startTime + 3) : startTime + 3;
-    const newSeg: TranscriptSegment = {
-      id: `seg_${Date.now()}`,
-      startTime,
-      endTime,
-      text: '',
-    };
+    const endTime   = next ? Math.min(next.startTime, startTime + 3) : startTime + 3;
+    const newSeg: TranscriptSegment = { id: `seg_${Date.now()}`, startTime, endTime, text: '' };
     const updated = [
       ...segments.slice(0, index + 1),
       newSeg,
       ...segments.slice(index + 1),
     ];
     onChange?.(updated);
-    setTimeout(() => {
-      setEditingId(newSeg.id);
-      setEditText('');
-    }, 50);
+    setTimeout(() => { setEditingId(newSeg.id); setEditField('text'); setEditText(''); }, 50);
   }, [segments, onChange]);
 
   return (
     <div className="transcript-editor">
       {/* Header */}
       <div className="transcript-editor__header">
-        <Text className="transcript-editor__title">字幕编辑</Text>
-        <Space size={6}>
-          <Tooltip title={autoScroll ? '关闭自动滚动' : '开启自动滚动'}>
-            <Button
-              type={autoScroll ? 'primary' : 'text'}
-              size="small"
-              icon={<SyncOutlined />}
-              onClick={() => setAutoScroll(!autoScroll)}
-              ghost={autoScroll}
-            />
-          </Tooltip>
-          <Tag className="transcript-editor__count">{segments.length} 条</Tag>
-        </Space>
-      </div>
-
-      {/* Translation in progress banner */}
-      {translating && (
-        <div className="transcript-editor__translating-bar">
-          <SyncOutlined spin style={{ marginRight: 6 }} />
-          正在翻译字幕，请稍候…
+        <span className="transcript-editor__title">转写文本与翻译</span>
+        <div className="transcript-editor__header-right">
+          {translating && (
+            <span className="transcript-editor__translating">翻译中…</span>
+          )}
+          <span className="transcript-editor__count">共 {segments.length} 个段落</span>
         </div>
-      )}
-
-      {/* Search */}
-      <div className="transcript-editor__search">
-        <Input
-          prefix={<SearchOutlined />}
-          placeholder="搜索字幕内容"
-          value={searchText}
-          onChange={e => setSearchText(e.target.value)}
-          allowClear
-          size="small"
-        />
       </div>
 
       {/* Segment list */}
       <div className="transcript-editor__list">
-        {filteredSegments.length === 0 ? (
-          <Empty
-            description={searchText ? '没有匹配的字幕' : '暂无字幕内容'}
-            className="transcript-editor__empty"
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-          />
+        {segments.length === 0 ? (
+          <div className="transcript-editor__empty">暂无字幕，请点击「识别字幕」</div>
         ) : (
-          filteredSegments.map((seg, idx) => {
+          segments.map((seg, idx) => {
             const isActive  = seg.id === activeSegment?.id;
             const isEditing = seg.id === editingId;
+            const color     = getSpeakerColor(seg.speaker);
+            const speaker   = seg.speaker || '讲话人 1';
 
             return (
               <div
                 key={seg.id}
                 ref={isActive ? activeRef : undefined}
-                className={`ts-segment ${isActive ? 'ts-segment--active' : ''} ${isEditing ? 'ts-segment--editing' : ''}`}
+                className={`te-card ${isActive ? 'te-card--active' : ''} ${isEditing ? 'te-card--editing' : ''}`}
+                onClick={() => !isEditing && onSegmentClick?.(seg.startTime)}
               >
-                {/* Timecode */}
-                <div className="ts-segment__time">
-                  {editingTc?.id === seg.id && editingTc.field === 'start' ? (
-                    <Input
-                      size="small"
-                      value={editTcValue}
-                      onChange={e => setEditTcValue(e.target.value)}
-                      onBlur={() => handleSaveTcEdit(seg)}
-                      onPressEnter={() => handleSaveTcEdit(seg)}
-                      onKeyDown={e => e.key === 'Escape' && setEditingTc(null)}
-                      autoFocus
-                      className="ts-segment__tc-input"
-                    />
-                  ) : (
-                    <span
-                      onClick={() => onSegmentClick?.(seg.startTime)}
-                      onDoubleClick={e => handleStartTcEdit(seg, 'start', e)}
-                      title="单击跳转 / 双击编辑"
-                    >
-                      {formatTimecode(seg.startTime)}
-                    </span>
-                  )}
-                  <span className="ts-segment__time-arrow">→</span>
-                  {editingTc?.id === seg.id && editingTc.field === 'end' ? (
-                    <Input
-                      size="small"
-                      value={editTcValue}
-                      onChange={e => setEditTcValue(e.target.value)}
-                      onBlur={() => handleSaveTcEdit(seg)}
-                      onPressEnter={() => handleSaveTcEdit(seg)}
-                      onKeyDown={e => e.key === 'Escape' && setEditingTc(null)}
-                      autoFocus
-                      className="ts-segment__tc-input"
-                    />
-                  ) : (
-                    <span
-                      onDoubleClick={e => handleStartTcEdit(seg, 'end', e)}
-                      title="双击编辑结束时间"
-                    >
-                      {formatTimecode(seg.endTime)}
-                    </span>
-                  )}
+                {/* Card header: speaker + time */}
+                <div className="te-card__header">
+                  <div className="te-card__speaker">
+                    <span className="te-card__dot" style={{ background: color }} />
+                    <span className="te-card__speaker-name">{speaker}</span>
+                  </div>
+                  <span className="te-card__time">
+                    {formatSegTime(seg.startTime)} → {formatSegTime(seg.endTime)}
+                  </span>
                 </div>
 
-                {/* Text */}
-                <div className="ts-segment__body">
-                  {isEditing ? (
-                    <div className="ts-segment__edit">
+                {/* Original text */}
+                <div className="te-card__section">
+                  <span className="te-card__label">原文</span>
+                  {isEditing && editField === 'text' ? (
+                    <div className="te-card__edit-wrap">
                       <Input.TextArea
                         value={editText}
                         onChange={e => setEditText(e.target.value)}
-                        autoSize={{ minRows: 1, maxRows: 4 }}
+                        autoSize={{ minRows: 1, maxRows: 5 }}
                         autoFocus
-                        onPressEnter={e => {
-                          if (!e.shiftKey) { e.preventDefault(); handleSaveEdit(seg.id); }
-                        }}
+                        onPressEnter={e => { if (!e.shiftKey) { e.preventDefault(); handleSaveEdit(seg.id); } }}
+                        onClick={e => e.stopPropagation()}
                       />
-                      <Space size={4} className="ts-segment__edit-actions">
-                        <Button size="small" type="primary" icon={<CheckOutlined />} onClick={() => handleSaveEdit(seg.id)}>确认</Button>
-                        <Button size="small" icon={<CloseOutlined />} onClick={handleCancelEdit}>取消</Button>
+                      <Space size={4}>
+                        <Button size="small" type="primary" icon={<CheckOutlined />} onClick={e => { e.stopPropagation(); handleSaveEdit(seg.id); }}>确认</Button>
+                        <Button size="small" icon={<CloseOutlined />} onClick={e => { e.stopPropagation(); handleCancelEdit(); }}>取消</Button>
                       </Space>
                     </div>
                   ) : (
-                    <>
-                      <p
-                        className="ts-segment__text"
-                        onClick={() => onSegmentClick?.(seg.startTime)}
-                      >
-                        {seg.text || <span className="ts-segment__placeholder">（空白字幕）</span>}
-                      </p>
-                      {seg.translation && (
-                        <p className="ts-segment__translation">{seg.translation}</p>
-                      )}
-                    </>
+                    <p
+                      className="te-card__text"
+                      onDoubleClick={e => { e.stopPropagation(); handleStartEdit(seg, 'text'); }}
+                      title="双击编辑"
+                    >
+                      {seg.text || <span className="te-card__placeholder">（空白）</span>}
+                    </p>
                   )}
                 </div>
 
-                {/* Actions (visible on hover) */}
+                {/* Translation */}
+                {(seg.translation || translating) && (
+                  <div className="te-card__section">
+                    <div className="te-card__trans-header">
+                      <span className="te-card__label">译文</span>
+                      {!isEditing && (
+                        <button
+                          className="te-card__edit-btn"
+                          onClick={e => { e.stopPropagation(); handleStartEdit(seg, 'translation'); }}
+                          title="编辑译文"
+                        >
+                          <EditOutlined />
+                        </button>
+                      )}
+                    </div>
+                    {isEditing && editField === 'translation' ? (
+                      <div className="te-card__edit-wrap">
+                        <Input.TextArea
+                          value={editText}
+                          onChange={e => setEditText(e.target.value)}
+                          autoSize={{ minRows: 1, maxRows: 5 }}
+                          autoFocus
+                          onPressEnter={e => { if (!e.shiftKey) { e.preventDefault(); handleSaveEdit(seg.id); } }}
+                          onClick={e => e.stopPropagation()}
+                        />
+                        <Space size={4}>
+                          <Button size="small" type="primary" icon={<CheckOutlined />} onClick={e => { e.stopPropagation(); handleSaveEdit(seg.id); }}>确认</Button>
+                          <Button size="small" icon={<CloseOutlined />} onClick={e => { e.stopPropagation(); handleCancelEdit(); }}>取消</Button>
+                        </Space>
+                      </div>
+                    ) : (
+                      <p className="te-card__translation">
+                        {seg.translation || <span className="te-card__placeholder">翻译中…</span>}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Hover actions */}
                 {!isEditing && (
-                  <div className="ts-segment__actions">
-                    <Tooltip title="编辑">
-                      <button className="ts-action-btn" onClick={() => handleStartEdit(seg)}>
-                        <EditOutlined />
-                      </button>
-                    </Tooltip>
-                    <Tooltip title="在此后插入">
-                      <button className="ts-action-btn" onClick={() => handleAddAfter(idx)}>
-                        <PlusOutlined />
-                      </button>
-                    </Tooltip>
-                    <Tooltip title="删除">
-                      <button
-                        className="ts-action-btn ts-action-btn--danger"
-                        onClick={() => handleDelete(seg.id)}
-                      >
-                        <DeleteOutlined />
-                      </button>
-                    </Tooltip>
+                  <div className="te-card__actions">
+                    <button className="te-card__action-btn" title="在此后插入" onClick={e => handleAddAfter(idx, e)}>
+                      <PlusOutlined />
+                    </button>
+                    <button className="te-card__action-btn te-card__action-btn--danger" title="删除" onClick={e => handleDelete(seg.id, e)}>
+                      <DeleteOutlined />
+                    </button>
+                  </div>
+                )}
+
+                {/* Playing badge */}
+                {isActive && (
+                  <div className="te-card__playing">
+                    <span className="te-card__playing-dot" />
+                    正在播放
                   </div>
                 )}
               </div>

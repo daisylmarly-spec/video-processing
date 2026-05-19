@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 52px;
+  height: 50px;
   padding: 0 $space-lg;
   background: $color-bg-panel;
   border-bottom: 1px solid $color-border;
@@ -15,7 +15,27 @@
     align-items: center;
     gap: $space-sm;
     min-width: 0;
-    flex: 1;
+  }
+
+  &__back-btn {
+    background: transparent;
+    border: none;
+    color: $color-text-secondary;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: $radius-sm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: color $transition-fast, background $transition-fast;
+    flex-shrink: 0;
+
+    &:hover {
+      color: $color-text-primary;
+      background: $color-bg-hover;
+    }
   }
 
   &__filename {
@@ -25,7 +45,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 280px;
+    max-width: 300px;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -45,18 +65,9 @@
     font-size: $font-size-sm;
   }
 
-  &__center {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-  }
-
   &__right {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    flex: 1;
   }
 
   &__icon-btn {
@@ -73,10 +84,6 @@
       background: $color-bg-hover !important;
     }
 
-    &:disabled {
-      opacity: 0.35;
-    }
-
     &--danger:hover:not(:disabled) {
       color: $color-error !important;
     }
@@ -86,6 +93,6 @@
     width: 1px;
     height: 20px;
     background: $color-border;
-    margin: 0 $space-xs;
+    margin: 0 2px;
   }
 }

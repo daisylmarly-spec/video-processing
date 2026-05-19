@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { App, ConfigProvider, Spin, Button, Space } from 'antd';
 import type { ThemeConfig } from 'antd';
 import { AudioOutlined, WarningOutlined, ReloadOutlined, SettingOutlined } from '@ant-design/icons';
@@ -107,6 +108,7 @@ const VideoProcessingPageInner: React.FC = () => {
   const videoUrlRef      = useRef<string | undefined>(undefined);
 
   const { message: msg } = App.useApp();
+  const navigate = useNavigate();
 
   // ── Load video from IndexedDB on mount ───────────────────────────────────
   useEffect(() => {
@@ -269,6 +271,12 @@ const VideoProcessingPageInner: React.FC = () => {
     }
   }, [videoId, msg]);
 
+  // ── Active segment (for subtitle overlay) ────────────────────────────────
+  const activeSegment = useMemo(() =>
+    segments.find(s => currentTime >= s.startTime && currentTime <= s.endTime),
+    [segments, currentTime],
+  );
+
   // ── Derived ──────────────────────────────────────────────────────────────
   const toolbarStatus: ProcessStatus =
     txStatus === 'done'                              ? 'done'       :
@@ -284,12 +292,8 @@ const VideoProcessingPageInner: React.FC = () => {
         fileName={videoName}
         status={toolbarStatus}
         isDirty={isDirty}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onSave={handleSave}
+        onBack={() => navigate('/')}
         onExport={handleExport}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
         onSettings={() => setSettingsOpen(true)}
         onTranscribe={videoId && txStatus !== 'transcribing' && txStatus !== 'translating' ? handleTranscribe : undefined}
         transcribeRunning={txStatus === 'transcribing' || txStatus === 'translating'}
@@ -308,25 +312,7 @@ const VideoProcessingPageInner: React.FC = () => {
       />
 
       <div className="vp-page__body">
-        {/* Left: video + timeline */}
-        <div className="vp-page__main">
-          <div className="vp-page__video-area">
-            <VideoPlayer
-              src={videoUrl}
-              seekTo={seekTarget}
-              onTimeUpdate={setCurrentTime}
-              onDurationChange={setDuration}
-            />
-          </div>
-          <Timeline
-            duration={duration}
-            currentTime={currentTime}
-            segments={segments}
-            onSeek={handleSeek}
-          />
-        </div>
-
-        {/* Right: transcript + translation */}
+        {/* Left: transcript */}
         <div className="vp-page__sidebar">
           {txStatus === 'ready' && (
             <div className="vp-page__tx-prompt">
@@ -380,6 +366,28 @@ const VideoProcessingPageInner: React.FC = () => {
               onSegmentClick={handleSeek}
             />
           )}
+        </div>
+
+        {/* Right: video + timeline */}
+        <div className="vp-page__main">
+          <div className="vp-page__video-area">
+            <VideoPlayer
+              src={videoUrl}
+              seekTo={seekTarget}
+              onTimeUpdate={setCurrentTime}
+              onDurationChange={setDuration}
+              subtitle={activeSegment ? {
+                text:    activeSegment.translation || activeSegment.text,
+                speaker: activeSegment.speaker,
+              } : undefined}
+            />
+          </div>
+          <Timeline
+            duration={duration}
+            currentTime={currentTime}
+            segments={segments}
+            onSeek={handleSeek}
+          />
         </div>
       </div>
 

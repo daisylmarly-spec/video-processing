@@ -1,18 +1,19 @@
 @use '../styles/tokens' as *;
 
+// ── Panel ─────────────────────────────────────────────────────────────────────
 .transcript-editor {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: $color-bg-panel;
-  border-left: 1px solid $color-border;
+  background: $color-bg-base;
   overflow: hidden;
+  border-right: 1px solid $color-border;
 
   &__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: $space-md $space-lg;
+    padding: 14px 20px;
     border-bottom: 1px solid $color-border;
     flex-shrink: 0;
   }
@@ -23,127 +24,140 @@
     color: $color-text-primary;
   }
 
+  &__header-right {
+    display: flex;
+    align-items: center;
+    gap: $space-md;
+  }
+
   &__count {
     font-size: $font-size-sm;
     color: $color-text-secondary;
-    border-color: $color-border;
   }
 
-  &__search {
-    padding: $space-sm $space-lg;
-    border-bottom: 1px solid $color-border;
-    flex-shrink: 0;
+  &__translating {
+    font-size: $font-size-sm;
+    color: $color-primary;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 
-    .ant-input-affix-wrapper {
-      background: $color-bg-elevated;
-      border-color: $color-border;
-      font-size: $font-size-sm;
-
-      &:hover, &:focus-within {
-        border-color: $color-primary;
-      }
-
-      input { color: $color-text-primary; }
-      .ant-input-prefix { color: $color-text-disabled; }
+    &::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: $color-primary;
+      animation: te-pulse 1.4s ease-in-out infinite;
     }
   }
 
   &__list {
     flex: 1;
     overflow-y: auto;
-    padding: $space-sm 0;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 
     &::-webkit-scrollbar { width: 4px; }
     &::-webkit-scrollbar-track { background: transparent; }
-    &::-webkit-scrollbar-thumb {
-      background: $color-border;
-      border-radius: 2px;
-    }
+    &::-webkit-scrollbar-thumb { background: $color-border; border-radius: 2px; }
   }
 
   &__empty {
-    margin-top: $space-xl * 2;
     color: $color-text-disabled;
-  }
-
-  &__translating-bar {
-    display: flex;
-    align-items: center;
-    padding: $space-xs $space-lg;
-    background: rgba($color-primary, 0.08);
-    border-bottom: 1px solid rgba($color-primary, 0.2);
     font-size: $font-size-sm;
-    color: $color-primary;
-    flex-shrink: 0;
+    text-align: center;
+    margin-top: 60px;
   }
 }
 
-// ── Segment ──────────────────────────────────────────────────────────────────
-.ts-segment {
+@keyframes te-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.2; }
+}
+
+// ── Card ──────────────────────────────────────────────────────────────────────
+.te-card {
   position: relative;
-  padding: $space-sm $space-lg;
-  border-left: 2px solid transparent;
-  transition: background $transition-fast, border-color $transition-fast;
+  background: $color-bg-panel;
+  border: 1px solid $color-border;
+  border-radius: 10px;
+  padding: 14px 16px 12px;
+  cursor: pointer;
+  transition: border-color $transition-fast, background $transition-fast;
 
   &:hover {
-    background: $color-bg-elevated;
+    border-color: rgba($color-primary, 0.4);
 
-    .ts-segment__actions { opacity: 1; }
+    .te-card__actions { opacity: 1; }
   }
 
   &--active {
-    background: rgba($color-primary, 0.06);
-    border-left-color: $color-primary;
+    background: rgba($color-primary, 0.05);
+    border-color: $color-primary;
   }
 
   &--editing {
-    background: $color-bg-elevated;
+    cursor: default;
+    border-color: $color-primary;
+  }
+
+  // Header: speaker dot + name | timestamp
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  &__speaker {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  &__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  &__speaker-name {
+    font-size: $font-size-sm;
+    font-weight: 500;
+    color: $color-text-primary;
   }
 
   &__time {
-    display: flex;
-    align-items: center;
-    gap: $space-xs;
-    margin-bottom: 4px;
-    cursor: pointer;
-    font-size: $font-size-xs;
-    font-variant-numeric: tabular-nums;
+    font-size: 11px;
     color: $color-text-disabled;
+    font-variant-numeric: tabular-nums;
     font-family: 'Menlo', 'Monaco', monospace;
-    transition: color $transition-fast;
-
-    &:hover {
-      color: $color-primary;
-    }
+    letter-spacing: 0.02em;
   }
 
-  &__time-arrow {
-    font-size: 10px;
-    opacity: 0.5;
+  // Content sections
+  &__section {
+    margin-bottom: 8px;
+
+    &:last-of-type { margin-bottom: 0; }
   }
 
-  &__tc-input {
-    width: 120px;
-    font-size: $font-size-xs !important;
-    font-family: 'Menlo', 'Monaco', monospace;
-    padding: 0 4px !important;
-    height: 18px !important;
-    background: $color-bg-base !important;
-    border-color: $color-primary !important;
-    color: $color-text-primary !important;
-  }
-
-  &__body {
-    flex: 1;
-    min-width: 0;
+  &__label {
+    display: block;
+    font-size: 11px;
+    color: $color-text-disabled;
+    margin-bottom: 4px;
   }
 
   &__text {
     margin: 0;
     font-size: $font-size-body;
     color: $color-text-primary;
-    line-height: 1.6;
-    cursor: pointer;
+    line-height: 1.65;
     word-break: break-all;
   }
 
@@ -152,68 +166,93 @@
     font-style: italic;
   }
 
+  &__trans-header {
+    display: flex;
+    align-items: center;
+    gap: $space-sm;
+  }
+
+  &__edit-btn {
+    background: none;
+    border: none;
+    padding: 0 2px;
+    color: $color-text-disabled;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    transition: color $transition-fast;
+
+    &:hover { color: $color-primary; }
+  }
+
   &__translation {
-    margin: 4px 0 0;
-    padding-left: $space-sm;
-    border-left: 2px solid rgba($color-primary, 0.3);
+    margin: 0;
     font-size: $font-size-sm;
     color: $color-text-secondary;
-    line-height: 1.5;
+    line-height: 1.65;
     word-break: break-all;
   }
 
-  &__edit {
+  &__edit-wrap {
     display: flex;
     flex-direction: column;
     gap: $space-sm;
 
     .ant-input, .ant-input-textarea textarea {
-      background: $color-bg-base;
-      border-color: $color-primary;
-      color: $color-text-primary;
+      background: $color-bg-base !important;
+      border-color: $color-primary !important;
+      color: $color-text-primary !important;
       font-size: $font-size-body;
       resize: none;
     }
   }
 
-  &__edit-actions {
-    justify-content: flex-end;
-  }
-
+  // Hover action buttons (top-right)
   &__actions {
     position: absolute;
-    top: $space-sm;
-    right: $space-sm;
+    top: 10px;
+    right: 10px;
     display: flex;
     gap: 2px;
     opacity: 0;
     transition: opacity $transition-fast;
   }
-}
 
-// ── Action button ─────────────────────────────────────────────────────────────
-.ts-action-btn {
-  background: $color-bg-base;
-  border: 1px solid $color-border;
-  color: $color-text-secondary;
-  cursor: pointer;
-  width: 24px;
-  height: 24px;
-  border-radius: $radius-sm;
-  font-size: 11px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color $transition-fast, background $transition-fast, border-color $transition-fast;
+  &__action-btn {
+    background: $color-bg-base;
+    border: 1px solid $color-border;
+    color: $color-text-secondary;
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
+    border-radius: $radius-sm;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color $transition-fast, border-color $transition-fast;
 
-  &:hover {
-    color: $color-text-primary;
-    background: $color-bg-hover;
-    border-color: $color-border-light;
+    &:hover { color: $color-text-primary; border-color: $color-border-light; }
+    &--danger:hover { color: $color-error; border-color: $color-error; }
   }
 
-  &--danger:hover {
-    color: $color-error;
-    border-color: $color-error;
+  // Playing badge
+  &__playing {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: $color-primary;
+    font-weight: 500;
+  }
+
+  &__playing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: $color-primary;
+    animation: te-pulse 1.4s ease-in-out infinite;
   }
 }

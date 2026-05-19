@@ -1,16 +1,24 @@
 @use '../styles/tokens' as *;
 
 .video-player {
-  position: relative;
-  background: #000;
-  border-radius: $radius-md;
-  overflow: hidden;
-  width: 100%;
-  height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+  flex-direction: column;
+  height: 100%;
+  background: $color-bg-base;
+
+  // ── Video area ───────────────────────────────────────────────────────────────
+  &__video-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    background: #000;
+    cursor: pointer;
+    overflow: hidden;
+    border-radius: $radius-md $radius-md 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
   &__video {
     width: 100%;
@@ -19,7 +27,6 @@
     display: block;
   }
 
-  // ── Placeholder ──────────────────────────────────────────────────────────
   &__placeholder {
     display: flex;
     flex-direction: column;
@@ -31,71 +38,67 @@
     height: 100%;
     min-height: 240px;
 
-    &-icon {
-      font-size: 48px;
-      opacity: 0.3;
-    }
-
-    p {
-      font-size: $font-size-body;
-      margin: 0;
-    }
+    &-icon { font-size: 48px; opacity: 0.3; }
+    p { font-size: $font-size-body; margin: 0; }
   }
 
-  // ── Controls ─────────────────────────────────────────────────────────────
-  &__controls {
+  // ── Subtitle overlay ─────────────────────────────────────────────────────────
+  &__subtitle {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
-    padding: $space-xl $space-lg $space-md;
-    opacity: 0;
-    transition: opacity $transition-normal;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 88%;
+    text-align: center;
     pointer-events: none;
   }
 
-  &--controls-visible &__controls {
-    opacity: 1;
-    pointer-events: all;
+  &__subtitle-text {
+    display: inline;
+    background: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    font-size: 15px;
+    line-height: 1.6;
+    padding: 3px 10px;
+    border-radius: 4px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    margin: 0;
   }
 
-  &:hover &__controls {
-    opacity: 1;
-    pointer-events: all;
+  &__subtitle-speaker {
+    display: block;
+    margin-top: 6px;
+    font-size: 11px;
+    color: #fff;
+    background: $color-primary;
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    margin-top: 6px;
+  }
+
+  // ── Controls bar ─────────────────────────────────────────────────────────────
+  &__controls {
+    flex-shrink: 0;
+    background: $color-bg-panel;
+    border-top: 1px solid $color-border;
+    padding: 8px $space-md 10px;
+    border-radius: 0 0 $radius-md $radius-md;
   }
 
   &__progress {
-    margin-bottom: $space-sm;
+    margin-bottom: 6px;
 
-    .ant-slider {
-      margin: 0;
-    }
+    .ant-slider { margin: 0; }
 
-    .ant-slider-rail {
-      background: rgba(255, 255, 255, 0.2);
-      height: 3px;
-    }
-
-    .ant-slider-track {
-      background: $color-primary;
-      height: 3px;
-    }
-
+    .ant-slider-rail  { background: rgba(255,255,255,0.12); height: 3px; }
+    .ant-slider-track { background: $color-primary; height: 3px; }
     .ant-slider-handle {
-      width: 10px;
-      height: 10px;
-      margin-top: -3px;
+      width: 10px; height: 10px; margin-top: -3px;
       border-color: $color-primary !important;
       background: #fff;
-
-      &::after {
-        box-shadow: 0 0 0 2px $color-primary !important;
-        width: 10px;
-        height: 10px;
-        inset-inline-start: 0;
-        inset-block-start: 0;
-      }
+      &::after { box-shadow: 0 0 0 2px $color-primary !important; width:10px; height:10px; inset-inline-start:0; inset-block-start:0; }
     }
   }
 
@@ -105,95 +108,63 @@
     justify-content: space-between;
   }
 
-  &__control-left,
-  &__control-right {
+  &__ctrl-left,
+  &__ctrl-right {
     display: flex;
     align-items: center;
     gap: $space-sm;
+  }
+
+  &__time {
+    font-size: $font-size-sm;
+    color: $color-text-secondary;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    user-select: none;
+    min-width: 36px;
+
+    &--total { color: $color-text-disabled; }
   }
 
   &__volume {
     display: flex;
     align-items: center;
     gap: $space-xs;
-    width: 120px;
 
-    .ant-slider {
-      flex: 1;
-      margin: 0;
-    }
-
-    .ant-slider-rail { background: rgba(255, 255, 255, 0.2); height: 2px; }
-    .ant-slider-track { background: #fff; height: 2px; }
+    .ant-slider { margin: 0; }
+    .ant-slider-rail  { background: rgba(255,255,255,0.12); height: 2px; }
+    .ant-slider-track { background: $color-text-secondary; height: 2px; }
     .ant-slider-handle {
-      width: 8px;
-      height: 8px;
-      background: #fff;
+      width: 8px; height: 8px; background: #fff;
       &::after { display: none; }
     }
   }
 
-  &__volume-slider { width: 80px !important; }
-
-  &__time {
-    font-size: $font-size-sm;
-    color: rgba(255, 255, 255, 0.85);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-    user-select: none;
-  }
-
-  &__rate-group {
-    display: flex;
-    gap: 2px;
-  }
+  &__volume-slider { width: 72px !important; }
+  &__seek-slider   { width: 100% !important; }
 }
 
-// ── Shared button style ──────────────────────────────────────────────────────
+// ── Buttons ───────────────────────────────────────────────────────────────────
 .vp-btn {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.8);
+  color: $color-text-secondary;
   cursor: pointer;
   padding: $space-xs;
   border-radius: $radius-sm;
-  font-size: 16px;
+  font-size: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color $transition-fast, background $transition-fast;
+  transition: color $transition-fast;
   line-height: 1;
 
-  &:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.1);
-  }
+  &:hover { color: $color-text-primary; }
 
   &--play {
-    font-size: 28px;
+    font-size: 26px;
     padding: 0;
-
-    &:hover { background: transparent; }
-  }
-}
-
-.vp-rate-btn {
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.55);
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: $radius-sm;
-  font-size: $font-size-sm;
-  transition: color $transition-fast, background $transition-fast;
-
-  &:hover {
-    color: rgba(255, 255, 255, 0.85);
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  &--active {
-    color: #fff !important;
-    background: rgba(255, 255, 255, 0.15) !important;
+    color: $color-text-primary;
+    &:hover { color: $color-primary; }
   }
 }

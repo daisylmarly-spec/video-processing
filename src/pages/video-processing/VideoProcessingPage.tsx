@@ -106,6 +106,7 @@ const VideoProcessingPageInner: React.FC = () => {
   const autoSaveTimer    = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const transcriptKeyRef = useRef(DEMO_KEY);
   const videoUrlRef      = useRef<string | undefined>(undefined);
+  const autoStartedRef   = useRef(false);
 
   const { message: msg } = App.useApp();
   const navigate = useNavigate();
@@ -149,6 +150,16 @@ const VideoProcessingPageInner: React.FC = () => {
       }
     };
   }, []);
+
+  // ── Auto-start transcription when video is ready + credentials configured ─
+  useEffect(() => {
+    if (txStatus !== 'ready' || autoStartedRef.current) return;
+    const s = loadSettings();
+    if (s.xfAppId && s.xfApiKey && s.xfApiSecret) {
+      autoStartedRef.current = true;
+      handleTranscribe();
+    }
+  }, [txStatus, handleTranscribe]);
 
   // ── Auto-save ────────────────────────────────────────────────────────────
   useEffect(() => {

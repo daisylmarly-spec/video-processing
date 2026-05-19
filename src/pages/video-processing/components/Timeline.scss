@@ -1,0 +1,161 @@
+@use '../styles/tokens' as *;
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  background: $color-bg-panel;
+  border-top: 1px solid $color-border;
+  flex-shrink: 0;
+  height: 120px;
+  user-select: none;
+
+  &__label {
+    padding: $space-xs $space-lg;
+    font-size: $font-size-xs;
+    color: $color-text-disabled;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid $color-border;
+    flex-shrink: 0;
+  }
+
+  &__body {
+    position: relative;
+    flex: 1;
+    cursor: pointer;
+    overflow: hidden;
+
+    &:hover .timeline__playhead-line { opacity: 1; }
+  }
+
+  // ── Ruler ──────────────────────────────────────────────────────────────────
+  &__ruler {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 24px;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__tick {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    &::before {
+      content: '';
+      display: block;
+      width: 1px;
+      height: 6px;
+      background: $color-border-light;
+    }
+  }
+
+  &__tick-label {
+    font-size: 10px;
+    color: $color-text-disabled;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    font-family: 'Menlo', 'Monaco', monospace;
+  }
+
+  // ── Track ──────────────────────────────────────────────────────────────────
+  &__track {
+    position: absolute;
+    top: 28px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: $space-xs 0;
+  }
+
+  &__segment {
+    position: absolute;
+    top: $space-xs;
+    bottom: $space-xs;
+    min-width: 4px;
+    background: rgba($color-primary, 0.25);
+    border: 1px solid rgba($color-primary, 0.5);
+    border-radius: 2px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: background $transition-fast;
+
+    &:hover {
+      background: rgba($color-primary, 0.4);
+    }
+  }
+
+  &__segment-text {
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: rgba($color-primary, 0.9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  // ── Playhead ──────────────────────────────────────────────────────────────
+  &__playhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-50%);
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  &__playhead-head {
+    width: 10px;
+    height: 10px;
+    background: $color-error;
+    border-radius: 50%;
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  &__playhead-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    background: $color-error;
+    opacity: 0.8;
+    transition: opacity $transition-fast;
+  }
+
+  // ── Footer ─────────────────────────────────────────────────────────────────
+  &__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px $space-lg;
+    border-top: 1px solid $color-border;
+    flex-shrink: 0;
+  }
+
+  &__footer-time {
+    font-size: $font-size-xs;
+    color: $color-text-secondary;
+    font-variant-numeric: tabular-nums;
+    font-family: 'Menlo', 'Monaco', monospace;
+  }
+
+  &__footer-info {
+    font-size: $font-size-xs;
+    color: $color-text-disabled;
+  }
+}

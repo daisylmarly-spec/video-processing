@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/api/xf-asr/:path*", "destination": "/api/xf-asr/[...path]" },
+    { "source": "/api/xf-mt/:path*",  "destination": "/api/xf-mt/[...path]"  },
+    { "source": "/(.*)",              "destination": "/index.html"             }
+  ]
+}

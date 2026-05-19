@@ -1,0 +1,142 @@
+.home-page {
+  width: 1920px;
+  height: 1080px;
+  background: #0d0e12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 56px;
+  position: relative;
+  overflow: hidden;
+
+  &__bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 800px 600px at 30% 20%, rgba(22, 119, 255, 0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 600px 400px at 75% 70%, rgba(99, 56, 255, 0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  &__header {
+    text-align: center;
+    z-index: 1;
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 40px;
+      font-weight: 700;
+      color: #f0f1f5;
+      letter-spacing: 0.5px;
+    }
+
+    p {
+      margin: 0;
+      font-size: 16px;
+      color: #9098a8;
+    }
+  }
+
+  &__upload-area {
+    z-index: 1;
+    width: 640px;
+
+    .ant-upload-drag {
+      background: #16181f !important;
+      border: 1.5px dashed #2a2d3a !important;
+      border-radius: 16px !important;
+      transition: border-color 0.2s, background 0.2s;
+
+      &:hover,
+      &.ant-upload-drag-hover {
+        border-color: #1677ff !important;
+        background: rgba(22, 119, 255, 0.04) !important;
+      }
+    }
+
+    .upload-inner {
+      padding: 48px 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+
+      &__icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: rgba(22, 119, 255, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+      }
+
+      &__title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #f0f1f5;
+        margin: 0;
+      }
+
+      &__hint {
+        font-size: 13px;
+        color: #9098a8;
+        margin: 0;
+      }
+
+      &__btn {
+        margin-top: 8px;
+      }
+    }
+  }
+
+  &__progress {
+    z-index: 1;
+    width: 640px;
+    background: #16181f;
+    border: 1px solid #2a2d3a;
+    border-radius: 16px;
+    padding: 40px 48px;
+
+    &-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f0f1f5;
+      margin: 0 0 32px;
+    }
+
+    .ant-steps {
+      .ant-steps-item-title {
+        font-size: 15px;
+        color: #9098a8 !important;
+      }
+
+      .ant-steps-item-finish .ant-steps-item-title,
+      .ant-steps-item-process .ant-steps-item-title {
+        color: #f0f1f5 !important;
+      }
+
+      .ant-steps-item-description {
+        font-size: 13px;
+        color: #4a5060 !important;
+      }
+
+      .ant-steps-item-finish .ant-steps-item-description {
+        color: #9098a8 !important;
+      }
+    }
+  }
+}
+
+// Scale the 1920×1080 canvas to fit any viewport
+.home-scale-root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #0d0e12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

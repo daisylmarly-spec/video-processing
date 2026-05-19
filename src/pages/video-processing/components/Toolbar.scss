@@ -1,0 +1,91 @@
+@use '../styles/tokens' as *;
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 $space-lg;
+  background: $color-bg-panel;
+  border-bottom: 1px solid $color-border;
+  flex-shrink: 0;
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: $space-sm;
+    min-width: 0;
+    flex: 1;
+  }
+
+  &__filename {
+    font-size: $font-size-md;
+    font-weight: 500;
+    color: $color-text-primary;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__dirty-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: $color-warning;
+    flex-shrink: 0;
+  }
+
+  &__status-tag {
+    flex-shrink: 0;
+    font-size: $font-size-sm;
+  }
+
+  &__center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
+
+  &__right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1;
+  }
+
+  &__icon-btn {
+    color: $color-text-secondary !important;
+    width: 32px;
+    height: 32px;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover:not(:disabled) {
+      color: $color-text-primary !important;
+      background: $color-bg-hover !important;
+    }
+
+    &:disabled {
+      opacity: 0.35;
+    }
+
+    &--danger:hover:not(:disabled) {
+      color: $color-error !important;
+    }
+  }
+
+  &__divider {
+    width: 1px;
+    height: 20px;
+    background: $color-border;
+    margin: 0 $space-xs;
+  }
+}

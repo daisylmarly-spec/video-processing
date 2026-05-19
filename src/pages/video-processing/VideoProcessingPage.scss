@@ -1,0 +1,129 @@
+@use './styles/tokens' as *;
+
+.vp-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: $color-bg-base;
+  color: $color-text-primary;
+  overflow: hidden;
+
+  &__body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  // ── Left column: video + timeline ────────────────────────────────────────
+  &__main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  &__video-area {
+    flex: 1;
+    min-height: 0;
+    padding: $space-lg;
+    background: $color-bg-base;
+  }
+
+  // ── Right column: transcript ─────────────────────────────────────────────
+  &__sidebar {
+    width: 380px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    @media (max-width: 1200px) { width: 320px; }
+  }
+
+  // ── Transcription states ─────────────────────────────────────────────────
+  %tx-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: $space-md;
+    padding: $space-xl;
+    text-align: center;
+    background: $color-bg-panel;
+    border-left: 1px solid $color-border;
+  }
+
+  &__tx-prompt {
+    @extend %tx-center;
+
+    p { margin: 0; }
+  }
+
+  &__tx-icon {
+    font-size: 40px;
+    color: $color-primary;
+    opacity: 0.6;
+  }
+
+  &__tx-title {
+    font-size: $font-size-md;
+    font-weight: 600;
+    color: $color-text-primary;
+  }
+
+  &__tx-desc {
+    font-size: $font-size-sm;
+    color: $color-text-secondary;
+    max-width: 260px;
+    line-height: 1.6;
+  }
+
+  &__tx-settings-btn {
+    color: $color-text-disabled !important;
+    font-size: $font-size-sm !important;
+  }
+
+  &__tx-loading {
+    @extend %tx-center;
+  }
+
+  &__tx-step {
+    font-size: $font-size-md;
+    color: $color-text-primary;
+    margin: 0;
+  }
+
+  &__tx-hint {
+    font-size: $font-size-sm;
+    color: $color-text-secondary;
+    margin: 0;
+  }
+
+  &__tx-error {
+    @extend %tx-center;
+  }
+
+  &__tx-error-icon {
+    font-size: 36px;
+    color: $color-error;
+  }
+
+  &__tx-error-title {
+    font-size: $font-size-md;
+    font-weight: 600;
+    color: $color-text-primary;
+    margin: 0;
+  }
+
+  &__tx-error-msg {
+    font-size: $font-size-sm;
+    color: $color-error;
+    word-break: break-all;
+    max-width: 300px;
+    margin: 0;
+    opacity: 0.8;
+  }
+}

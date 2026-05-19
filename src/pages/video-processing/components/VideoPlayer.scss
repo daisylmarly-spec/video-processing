@@ -1,0 +1,199 @@
+@use '../styles/tokens' as *;
+
+.video-player {
+  position: relative;
+  background: #000;
+  border-radius: $radius-md;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  &__video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
+  // ── Placeholder ──────────────────────────────────────────────────────────
+  &__placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: $space-md;
+    color: $color-text-disabled;
+    width: 100%;
+    height: 100%;
+    min-height: 240px;
+
+    &-icon {
+      font-size: 48px;
+      opacity: 0.3;
+    }
+
+    p {
+      font-size: $font-size-body;
+      margin: 0;
+    }
+  }
+
+  // ── Controls ─────────────────────────────────────────────────────────────
+  &__controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+    padding: $space-xl $space-lg $space-md;
+    opacity: 0;
+    transition: opacity $transition-normal;
+    pointer-events: none;
+  }
+
+  &--controls-visible &__controls {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  &:hover &__controls {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  &__progress {
+    margin-bottom: $space-sm;
+
+    .ant-slider {
+      margin: 0;
+    }
+
+    .ant-slider-rail {
+      background: rgba(255, 255, 255, 0.2);
+      height: 3px;
+    }
+
+    .ant-slider-track {
+      background: $color-primary;
+      height: 3px;
+    }
+
+    .ant-slider-handle {
+      width: 10px;
+      height: 10px;
+      margin-top: -3px;
+      border-color: $color-primary !important;
+      background: #fff;
+
+      &::after {
+        box-shadow: 0 0 0 2px $color-primary !important;
+        width: 10px;
+        height: 10px;
+        inset-inline-start: 0;
+        inset-block-start: 0;
+      }
+    }
+  }
+
+  &__control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__control-left,
+  &__control-right {
+    display: flex;
+    align-items: center;
+    gap: $space-sm;
+  }
+
+  &__volume {
+    display: flex;
+    align-items: center;
+    gap: $space-xs;
+    width: 120px;
+
+    .ant-slider {
+      flex: 1;
+      margin: 0;
+    }
+
+    .ant-slider-rail { background: rgba(255, 255, 255, 0.2); height: 2px; }
+    .ant-slider-track { background: #fff; height: 2px; }
+    .ant-slider-handle {
+      width: 8px;
+      height: 8px;
+      background: #fff;
+      &::after { display: none; }
+    }
+  }
+
+  &__volume-slider { width: 80px !important; }
+
+  &__time {
+    font-size: $font-size-sm;
+    color: rgba(255, 255, 255, 0.85);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  &__rate-group {
+    display: flex;
+    gap: 2px;
+  }
+}
+
+// ── Shared button style ──────────────────────────────────────────────────────
+.vp-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  padding: $space-xs;
+  border-radius: $radius-sm;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color $transition-fast, background $transition-fast;
+  line-height: 1;
+
+  &:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  &--play {
+    font-size: 28px;
+    padding: 0;
+
+    &:hover { background: transparent; }
+  }
+}
+
+.vp-rate-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: $radius-sm;
+  font-size: $font-size-sm;
+  transition: color $transition-fast, background $transition-fast;
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  &--active {
+    color: #fff !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+  }
+}

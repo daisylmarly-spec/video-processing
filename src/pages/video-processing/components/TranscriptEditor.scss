@@ -1,0 +1,219 @@
+@use '../styles/tokens' as *;
+
+.transcript-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: $color-bg-panel;
+  border-left: 1px solid $color-border;
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $space-md $space-lg;
+    border-bottom: 1px solid $color-border;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    font-size: $font-size-md;
+    font-weight: 600;
+    color: $color-text-primary;
+  }
+
+  &__count {
+    font-size: $font-size-sm;
+    color: $color-text-secondary;
+    border-color: $color-border;
+  }
+
+  &__search {
+    padding: $space-sm $space-lg;
+    border-bottom: 1px solid $color-border;
+    flex-shrink: 0;
+
+    .ant-input-affix-wrapper {
+      background: $color-bg-elevated;
+      border-color: $color-border;
+      font-size: $font-size-sm;
+
+      &:hover, &:focus-within {
+        border-color: $color-primary;
+      }
+
+      input { color: $color-text-primary; }
+      .ant-input-prefix { color: $color-text-disabled; }
+    }
+  }
+
+  &__list {
+    flex: 1;
+    overflow-y: auto;
+    padding: $space-sm 0;
+
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb {
+      background: $color-border;
+      border-radius: 2px;
+    }
+  }
+
+  &__empty {
+    margin-top: $space-xl * 2;
+    color: $color-text-disabled;
+  }
+
+  &__translating-bar {
+    display: flex;
+    align-items: center;
+    padding: $space-xs $space-lg;
+    background: rgba($color-primary, 0.08);
+    border-bottom: 1px solid rgba($color-primary, 0.2);
+    font-size: $font-size-sm;
+    color: $color-primary;
+    flex-shrink: 0;
+  }
+}
+
+// ── Segment ──────────────────────────────────────────────────────────────────
+.ts-segment {
+  position: relative;
+  padding: $space-sm $space-lg;
+  border-left: 2px solid transparent;
+  transition: background $transition-fast, border-color $transition-fast;
+
+  &:hover {
+    background: $color-bg-elevated;
+
+    .ts-segment__actions { opacity: 1; }
+  }
+
+  &--active {
+    background: rgba($color-primary, 0.06);
+    border-left-color: $color-primary;
+  }
+
+  &--editing {
+    background: $color-bg-elevated;
+  }
+
+  &__time {
+    display: flex;
+    align-items: center;
+    gap: $space-xs;
+    margin-bottom: 4px;
+    cursor: pointer;
+    font-size: $font-size-xs;
+    font-variant-numeric: tabular-nums;
+    color: $color-text-disabled;
+    font-family: 'Menlo', 'Monaco', monospace;
+    transition: color $transition-fast;
+
+    &:hover {
+      color: $color-primary;
+    }
+  }
+
+  &__time-arrow {
+    font-size: 10px;
+    opacity: 0.5;
+  }
+
+  &__tc-input {
+    width: 120px;
+    font-size: $font-size-xs !important;
+    font-family: 'Menlo', 'Monaco', monospace;
+    padding: 0 4px !important;
+    height: 18px !important;
+    background: $color-bg-base !important;
+    border-color: $color-primary !important;
+    color: $color-text-primary !important;
+  }
+
+  &__body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: $font-size-body;
+    color: $color-text-primary;
+    line-height: 1.6;
+    cursor: pointer;
+    word-break: break-all;
+  }
+
+  &__placeholder {
+    color: $color-text-disabled;
+    font-style: italic;
+  }
+
+  &__translation {
+    margin: 4px 0 0;
+    padding-left: $space-sm;
+    border-left: 2px solid rgba($color-primary, 0.3);
+    font-size: $font-size-sm;
+    color: $color-text-secondary;
+    line-height: 1.5;
+    word-break: break-all;
+  }
+
+  &__edit {
+    display: flex;
+    flex-direction: column;
+    gap: $space-sm;
+
+    .ant-input, .ant-input-textarea textarea {
+      background: $color-bg-base;
+      border-color: $color-primary;
+      color: $color-text-primary;
+      font-size: $font-size-body;
+      resize: none;
+    }
+  }
+
+  &__edit-actions {
+    justify-content: flex-end;
+  }
+
+  &__actions {
+    position: absolute;
+    top: $space-sm;
+    right: $space-sm;
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity $transition-fast;
+  }
+}
+
+// ── Action button ─────────────────────────────────────────────────────────────
+.ts-action-btn {
+  background: $color-bg-base;
+  border: 1px solid $color-border;
+  color: $color-text-secondary;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  border-radius: $radius-sm;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color $transition-fast, background $transition-fast, border-color $transition-fast;
+
+  &:hover {
+    color: $color-text-primary;
+    background: $color-bg-hover;
+    border-color: $color-border-light;
+  }
+
+  &--danger:hover {
+    color: $color-error;
+    border-color: $color-error;
+  }
+}

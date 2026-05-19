@@ -1,0 +1,44 @@
+// ─── Design Tokens ───────────────────────────────────────────────────────────
+// 与 Ant Design ConfigProvider token 对齐
+
+// Colors
+$color-primary:        #1677FF;
+$color-primary-hover:  #4096FF;
+$color-bg-base:        #0D0E12;
+$color-bg-panel:       #16181F;
+$color-bg-elevated:    #1E2029;
+$color-bg-hover:       #262833;
+$color-border:         #2A2D3A;
+$color-border-light:   #363944;
+
+$color-text-primary:   #F0F1F5;
+$color-text-secondary: #9098A8;
+$color-text-disabled:  #4A5060;
+
+$color-success:  #52C41A;
+$color-warning:  #FAAD14;
+$color-error:    #FF4D4F;
+$color-info:     #1677FF;
+
+// Spacing
+$space-xs:  4px;
+$space-sm:  8px;
+$space-md:  12px;
+$space-lg:  16px;
+$space-xl:  24px;
+
+// Typography
+$font-size-xs:    11px;
+$font-size-sm:    12px;
+$font-size-body:  13px;
+$font-size-md:    14px;
+$font-size-lg:    16px;
+
+// Radius
+$radius-sm:  4px;
+$radius-md:  6px;
+$radius-lg:  8px;
+
+// Transition
+$transition-fast:   0.15s ease;
+$transition-normal: 0.2s ease;

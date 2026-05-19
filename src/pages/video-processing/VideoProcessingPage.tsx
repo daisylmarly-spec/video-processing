@@ -299,7 +299,6 @@ const VideoProcessingPageInner: React.FC = () => {
         isDirty={isDirty}
         onBack={() => navigate('/')}
         onExport={handleExport}
-        onSettings={() => setSettingsOpen(true)}
         onTranscribe={videoId && txStatus !== 'transcribing' && txStatus !== 'translating' ? handleTranscribe : undefined}
         transcribeRunning={txStatus === 'transcribing' || txStatus === 'translating'}
         onClearStorage={() => {

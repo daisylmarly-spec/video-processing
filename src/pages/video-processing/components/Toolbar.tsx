@@ -3,7 +3,6 @@ import { Button, Space, Tag, Tooltip, Dropdown, Popconfirm } from 'antd';
 import {
   LeftOutlined,
   ExportOutlined,
-  SettingOutlined,
   DownOutlined,
   CheckCircleOutlined,
   LoadingOutlined,
@@ -21,7 +20,6 @@ interface ToolbarProps {
   isDirty?:          boolean;
   onBack?:           () => void;
   onExport?:         (format: string) => void;
-  onSettings?:       () => void;
   onClearStorage?:   () => void;
   onTranscribe?:     () => void;
   transcribeRunning?: boolean;
@@ -48,7 +46,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
   isDirty            = false,
   onBack,
   onExport,
-  onSettings,
   onClearStorage,
   onTranscribe,
   transcribeRunning  = false,
@@ -78,9 +75,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
       {/* Right */}
       <div className="toolbar__right">
         <Space size={6}>
-          <Tooltip title="设置">
-            <Button type="text" icon={<SettingOutlined />} onClick={onSettings} className="toolbar__icon-btn" />
-          </Tooltip>
           <Popconfirm
             title="清除本地缓存"
             description="将恢复初始字幕数据，此操作不可撤销。"

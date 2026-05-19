@@ -9,7 +9,7 @@ const T = (() => {
 function add32(a: number, b: number) { return (a + b) >>> 0; }
 function rol(x: number, n: number)   { return (x << n) | (x >>> (32 - n)); }
 
-function md5Block(msg: Uint8Array): Uint8Array {
+function md5Block(msg: Uint8Array): Uint8Array<ArrayBuffer> {
   const origLen = msg.length;
   const padLen  = origLen % 64 < 56 ? 56 - (origLen % 64) : 120 - (origLen % 64);
   const buf     = new Uint8Array(origLen + padLen + 8);

@@ -327,14 +327,6 @@ const VideoProcessingPageInner: React.FC = () => {
               <Button type="primary" icon={<AudioOutlined />} onClick={handleTranscribe}>
                 开始识别
               </Button>
-              <Button
-                type="text"
-                icon={<SettingOutlined />}
-                onClick={() => setSettingsOpen(true)}
-                className="vp-page__tx-settings-btn"
-              >
-                配置讯飞密钥
-              </Button>
             </div>
           )}
 
@@ -351,14 +343,9 @@ const VideoProcessingPageInner: React.FC = () => {
               <WarningOutlined className="vp-page__tx-error-icon" />
               <p className="vp-page__tx-error-title">识别失败</p>
               {txError && <p className="vp-page__tx-error-msg">{txError}</p>}
-              <Space>
-                <Button icon={<SettingOutlined />} onClick={() => setSettingsOpen(true)}>
-                  检查设置
-                </Button>
-                <Button type="primary" icon={<ReloadOutlined />} onClick={handleTranscribe}>
-                  重试
-                </Button>
-              </Space>
+              <Button type="primary" icon={<ReloadOutlined />} onClick={handleTranscribe}>
+                重试
+              </Button>
             </div>
           )}
 

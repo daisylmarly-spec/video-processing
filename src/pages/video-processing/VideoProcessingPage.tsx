@@ -96,8 +96,8 @@ const VideoProcessingPageInner: React.FC = () => {
   const [segments, setSegments] = useState<TranscriptSegment[]>(() =>
     loadTranscript(DEMO_KEY, MOCK_SEGMENTS)
   );
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
+  const [, setCanUndo] = useState(false);
+  const [, setCanRedo] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
   const historyRef       = useRef<TranscriptSegment[][]>([loadTranscript(DEMO_KEY, MOCK_SEGMENTS)]);
@@ -211,12 +211,6 @@ const VideoProcessingPageInner: React.FC = () => {
   }, []);
 
   // ── Save ──────────────────────────────────────────────────────────────────
-  const handleSave = useCallback(() => {
-    saveTranscript(transcriptKeyRef.current, segments);
-    setIsDirty(false);
-    msg.success('保存成功');
-  }, [msg, segments]);
-
   const handleExport = useCallback((format: string) => {
     msg.info(`正在导出 ${format.toUpperCase()} 格式...`);
   }, [msg]);

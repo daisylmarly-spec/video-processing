@@ -39,12 +39,6 @@ function formatSegTime(s: number): string {
   return `${m}:${sec.toFixed(1).padStart(4, '0')}`;
 }
 
-function parseTimecode(tc: string): number {
-  const match = tc.match(/^(\d{2}):(\d{2}):(\d{2})[,.](\d{3})$/);
-  if (!match) return 0;
-  const [, h, m, s, ms] = match.map(Number);
-  return h * 3600 + m * 60 + s + ms / 1000;
-}
 
 const TranscriptEditor: React.FC<TranscriptEditorProps> = ({
   segments,
@@ -57,7 +51,7 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({
   const [editText,    setEditText]    = useState('');
   const [editField,   setEditField]   = useState<'text' | 'translation'>('text');
   const activeRef = useRef<HTMLDivElement>(null);
-  const [autoScroll, setAutoScroll]   = useState(true);
+  const [autoScroll] = useState(true);
 
   const activeSegment = segments.find(
     s => currentTime >= s.startTime && currentTime <= s.endTime,

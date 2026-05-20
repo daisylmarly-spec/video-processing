@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { App, ConfigProvider, Spin, Button, Space } from 'antd';
+import { App, ConfigProvider, Spin, Button } from 'antd';
 import type { ThemeConfig } from 'antd';
-import { AudioOutlined, WarningOutlined, ReloadOutlined, SettingOutlined } from '@ant-design/icons';
+import { AudioOutlined, WarningOutlined, ReloadOutlined } from '@ant-design/icons';
 import Toolbar, { type ProcessStatus } from './components/Toolbar';
 import VideoPlayer from './components/VideoPlayer';
 import TranscriptEditor, { type TranscriptSegment } from './components/TranscriptEditor';
@@ -151,13 +151,6 @@ const VideoProcessingPageInner: React.FC = () => {
     };
   }, []);
 
-  // ── Auto-start transcription when video is ready ─────────────────────────
-  useEffect(() => {
-    if (txStatus !== 'ready' || autoStartedRef.current) return;
-    autoStartedRef.current = true;
-    handleTranscribe();
-  }, [txStatus, handleTranscribe]);
-
   // ── Auto-save ────────────────────────────────────────────────────────────
   useEffect(() => {
     clearTimeout(autoSaveTimer.current);
@@ -272,6 +265,13 @@ const VideoProcessingPageInner: React.FC = () => {
       msg.error('识别失败，请检查 API 配置和网络');
     }
   }, [videoId, msg]);
+
+  // ── Auto-start transcription when video is ready ─────────────────────────
+  useEffect(() => {
+    if (txStatus !== 'ready' || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    handleTranscribe();
+  }, [txStatus, handleTranscribe]);
 
   // ── Active segment (for subtitle overlay) ────────────────────────────────
   const activeSegment = useMemo(() =>

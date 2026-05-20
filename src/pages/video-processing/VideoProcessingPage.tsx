@@ -151,14 +151,11 @@ const VideoProcessingPageInner: React.FC = () => {
     };
   }, []);
 
-  // ── Auto-start transcription when video is ready + credentials configured ─
+  // ── Auto-start transcription when video is ready ─────────────────────────
   useEffect(() => {
     if (txStatus !== 'ready' || autoStartedRef.current) return;
-    const s = loadSettings();
-    if (s.xfAppId && s.xfApiKey && s.xfApiSecret) {
-      autoStartedRef.current = true;
-      handleTranscribe();
-    }
+    autoStartedRef.current = true;
+    handleTranscribe();
   }, [txStatus, handleTranscribe]);
 
   // ── Auto-save ────────────────────────────────────────────────────────────

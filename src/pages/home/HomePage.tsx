@@ -1,56 +1,39 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Upload, Button, Steps } from 'antd'
-import { InboxOutlined, VideoCameraOutlined } from '@ant-design/icons'
+import { InboxOutlined, VideoCameraOutlined, ReloadOutlined, WarningOutlined } from '@ant-design/icons'
 import { saveVideo, deleteVideo } from '../../utils/videoDB'
+import { transcribeAudio } from '../../utils/transcribe'
+import { translateSegments } from '../../utils/translate'
+import { loadSettings } from '../video-processing/components/SettingsModal'
 import './HomePage.scss'
 
 const { Dragger } = Upload
 
-type Stage = 'idle' | 'uploading' | 'upload_done' | 'recognizing' | 'done'
+type Stage = 'idle' | 'saving' | 'transcribing' | 'translating' | 'done' | 'error'
 
 const STEPS = [
-  { key: 'uploading',     title: '上传中',       desc: '正在上传视频文件…' },
-  { key: 'upload_done',   title: '上传完成',     desc: '文件已成功上传'     },
-  { key: 'recognizing',   title: '语音识别中',   desc: '正在提取并识别音频…' },
-  { key: 'done',          title: '语音识别完成', desc: '字幕已生成，即将跳转' },
+  { title: '文件上传',   desc: '正在保存视频文件…'           },
+  { title: '语音识别',   desc: '调用讯飞识别音频内容（约 1–5 分钟）' },
+  { title: '字幕翻译',   desc: '自动翻译字幕文本'             },
 ]
 
-const STAGE_ORDER: Stage[] = ['idle', 'uploading', 'upload_done', 'recognizing', 'done']
+interface PipelineData { id: string; blob: Blob; name: string }
 
-function stageIndex(s: Stage) {
-  return STAGE_ORDER.indexOf(s)
-}
-
-function currentStepIndex(stage: Stage) {
-  // Maps processing stage to Steps current index
-  const map: Partial<Record<Stage, number>> = {
-    uploading:    0,
-    upload_done:  1,
-    recognizing:  2,
-    done:         3,
-  }
-  return map[stage] ?? 0
-}
-
-function stepStatus(stepKey: string, stage: Stage): 'wait' | 'process' | 'finish' | 'error' {
-  const stageIdx = stageIndex(stage)
-  const stepIdx  = STEPS.findIndex(s => s.key === stepKey)
-  const stageOfStep = STAGE_ORDER[stepIdx + 1] // uploading=1, upload_done=2, ...
-
-  if (stage === 'idle') return 'wait'
-  if (stageIndex(stageOfStep as Stage) < stageIdx) return 'finish'
-  if (stageOfStep === stage) return 'process'
-  return 'wait'
+function stageToStep(stage: Stage): number {
+  if (stage === 'saving')       return 0
+  if (stage === 'transcribing') return 1
+  if (stage === 'translating' || stage === 'done') return 2
+  return 0
 }
 
 export default function HomePage() {
-  const navigate = useNavigate()
-  const [stage, setStage] = useState<Stage>('idle')
+  const navigate   = useNavigate()
+  const [stage,    setStage]    = useState<Stage>('idle')
   const [fileName, setFileName] = useState('')
-  const timerRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const [errorMsg, setErrorMsg] = useState('')
+  const retryRef   = useRef<PipelineData | null>(null)
 
-  // Scale the 1920×1080 canvas to fit the browser window
   const [scale, setScale] = useState(1)
   useEffect(() => {
     function updateScale() {
@@ -63,27 +46,75 @@ export default function HomePage() {
     return () => window.removeEventListener('resize', updateScale)
   }, [])
 
-  // Cleanup timers on unmount
-  useEffect(() => () => { timerRef.current.forEach(clearTimeout) }, [])
+  const runPipeline = useCallback(async ({ id, blob, name }: PipelineData) => {
+    const settings = loadSettings()
+    setErrorMsg('')
 
-  function startProcessing(name: string) {
-    setFileName(name)
-    setStage('uploading')
+    try {
+      setStage('transcribing')
+      const segs = await transcribeAudio(
+        blob, name,
+        settings.xfAppId, settings.xfApiKey, settings.xfApiSecret,
+        settings.sourceLang,
+      )
+      localStorage.setItem(`vp_transcript_${id}`, JSON.stringify(segs))
 
-    const delays: [Stage, number][] = [
-      ['upload_done',  2000],
-      ['recognizing',  3500],
-      ['done',         6000],
-    ]
-    delays.forEach(([s, ms]) => {
-      timerRef.current.push(setTimeout(() => setStage(s), ms))
-    })
-    timerRef.current.push(
-      setTimeout(() => navigate('/video/process'), 7200),
-    )
+      setStage('translating')
+      let finalSegs = segs
+      try {
+        const translated = await translateSegments(
+          segs,
+          settings.xfAppId, settings.xfApiKey, settings.xfApiSecret,
+          settings.sourceLang, settings.targetLang,
+        )
+        finalSegs = translated
+      } catch {
+        // translation failure is non-fatal — navigate with untranslated segments
+      }
+      localStorage.setItem(`vp_transcript_${id}`, JSON.stringify(finalSegs))
+
+      setStage('done')
+      setTimeout(() => navigate('/video/process'), 800)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : String(err))
+      setStage('error')
+    }
+  }, [navigate])
+
+  async function handleFile(file: File) {
+    const oldId = localStorage.getItem('vp_current_video_id')
+    if (oldId) deleteVideo(oldId).catch(() => {})
+
+    setFileName(file.name)
+    setStage('saving')
+
+    let id: string
+    try {
+      id = await saveVideo(file)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '视频保存失败')
+      setStage('error')
+      return
+    }
+
+    localStorage.setItem('vp_current_video_id',   id)
+    localStorage.setItem('vp_current_video_name', file.name)
+
+    const data: PipelineData = { id, blob: file, name: file.name }
+    retryRef.current = data
+    runPipeline(data)
   }
 
-  const isProcessing = stage !== 'idle'
+  const isProcessing = stage !== 'idle' && stage !== 'error'
+
+  const stepCurrent = stage === 'error'
+    ? stageToStep(stage)   // stays on the failed step
+    : stageToStep(stage)
+
+  const stepsStatus =
+    stage === 'error' ? 'error' :
+    stage === 'done'  ? 'finish' :
+    'process'
 
   return (
     <div className="home-scale-root">
@@ -98,26 +129,13 @@ export default function HomePage() {
           <p>上传视频，自动完成语音识别与字幕生成</p>
         </div>
 
-        {!isProcessing ? (
+        {!isProcessing && stage !== 'error' ? (
           <div className="home-page__upload-area">
             <Dragger
               name="file"
               multiple={false}
               accept="video/*"
-              beforeUpload={file => {
-                // Replace old video in IndexedDB
-                const oldId = localStorage.getItem('vp_current_video_id')
-                if (oldId) deleteVideo(oldId).catch(() => {})
-
-                // Save new video; navigation happens 7s later so this will finish in time
-                saveVideo(file).then(id => {
-                  localStorage.setItem('vp_current_video_id', id)
-                }).catch(() => {})
-
-                localStorage.setItem('vp_current_video_name', file.name)
-                startProcessing(file.name)
-                return false
-              }}
+              beforeUpload={file => { handleFile(file); return false }}
               showUploadList={false}
             >
               <div className="upload-inner">
@@ -139,18 +157,45 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="home-page__progress">
-            <p className="home-page__progress-title">
-              {fileName && `正在处理：${fileName}`}
-            </p>
-            <Steps
-              direction="vertical"
-              current={currentStepIndex(stage)}
-              items={STEPS.map(s => ({
-                title:       s.title,
-                description: s.desc,
-                status:      stepStatus(s.key, stage),
-              }))}
-            />
+            {stage === 'error' ? (
+              <>
+                <div className="home-page__progress-title" style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#ff4d4f' }}>
+                  <WarningOutlined />
+                  处理失败
+                </div>
+                {errorMsg && (
+                  <p style={{ fontSize: 13, color: '#9098a8', margin: '0 0 24px', wordBreak: 'break-all' }}>
+                    {errorMsg}
+                  </p>
+                )}
+                <div style={{ display: 'flex', gap: 12 }}>
+                  {retryRef.current && (
+                    <Button
+                      type="primary"
+                      icon={<ReloadOutlined />}
+                      onClick={() => retryRef.current && runPipeline(retryRef.current)}
+                    >
+                      重试
+                    </Button>
+                  )}
+                  <Button onClick={() => { setStage('idle'); setErrorMsg('') }}>
+                    重新上传
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="home-page__progress-title">
+                  {fileName && `正在处理：${fileName}`}
+                </p>
+                <Steps
+                  direction="vertical"
+                  current={stepCurrent}
+                  status={stepsStatus}
+                  items={STEPS.map(s => ({ title: s.title, description: s.desc }))}
+                />
+              </>
+            )}
           </div>
         )}
       </div>

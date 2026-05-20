@@ -25,12 +25,68 @@ interface ResultResponse {
 }
 
 function buildSigna(appId: string, apiSecret: string, ts: string) {
-  const m1    = md5Hex(appId + ts);
+  const m1 = md5Hex(appId + ts);
   return hmacMd5Base64(apiSecret, m1);
 }
 
+const CHUNK_SIZE    = 3 * 1024 * 1024; // 3 MB — safely under Vercel's 4.5 MB request limit
 const POLL_INTERVAL = 3000;
-const POLL_TIMEOUT  = 10 * 60 * 1000; // 10 min
+const POLL_TIMEOUT  = 10 * 60 * 1000;
+
+async function uploadFile(
+  blob:       Blob,
+  fileName:   string,
+  appId:      string,
+  apiSecret:  string,
+  sourceLang: string,
+): Promise<string> {
+  const ts          = Math.floor(Date.now() / 1000).toString();
+  const signa       = buildSigna(appId, apiSecret, ts);
+  const contentType = blob.type.startsWith('video/') ? 'video' : 'audio';
+  const totalSize   = blob.size;
+  const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
+
+  let orderId = '';
+
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const end   = Math.min(start + CHUNK_SIZE, totalSize);
+    const chunk = totalChunks === 1 ? blob : blob.slice(start, end);
+
+    const form = new FormData();
+    form.append('app_id',               appId);
+    form.append('ts',                   ts);
+    form.append('signa',                signa);
+    form.append('file_name',            fileName);
+    form.append('file_len',             String(totalSize));
+    form.append('has_participle',       'false');
+    form.append('language',             sourceLang);
+    form.append('has_seperate_language','false');
+    form.append('content_type',         contentType);
+
+    if (totalChunks > 1) {
+      form.append('file_piece_sn', String(i));
+      form.append('piece_len',     String(chunk.size));
+    }
+
+    form.append('content', chunk, fileName);
+
+    const res = await fetch('/api/xf-asr/v2/api/upload', { method: 'POST', body: form });
+    if (!res.ok) {
+      throw new Error(`上传失败 ${res.status}: ${await res.text().catch(() => '')}`);
+    }
+
+    const data = await res.json() as UploadResponse;
+    if (data.code !== '000000') {
+      throw new Error(`上传失败: ${data.descInfo ?? data.code}`);
+    }
+
+    if (data.data?.orderId) orderId = data.data.orderId;
+  }
+
+  if (!orderId) throw new Error('上传完成但未获取到任务ID');
+  return orderId;
+}
 
 export async function transcribeAudio(
   blob:       Blob,
@@ -40,39 +96,9 @@ export async function transcribeAudio(
   apiSecret:  string,
   sourceLang: string = 'cn',
 ): Promise<TranscriptSegment[]> {
-  // ── 1. Upload ────────────────────────────────────────────────────────────
-  const ts    = Math.floor(Date.now() / 1000).toString();
-  const signa = buildSigna(appId, apiSecret, ts);
+  const orderId = await uploadFile(blob, fileName, appId, apiSecret, sourceLang);
 
-  const form = new FormData();
-  form.append('app_id',               appId);
-  form.append('ts',                   ts);
-  form.append('signa',                signa);
-  form.append('file_name',            fileName);
-  form.append('file_len',             String(blob.size));
-  form.append('has_participle',       'false');
-  form.append('language',             sourceLang);
-  form.append('has_seperate_language','false');
-  form.append('content_type',         blob.type.startsWith('video/') ? 'video' : 'audio');
-  form.append('content',              blob, fileName);
-
-  const uploadRes = await fetch('/api/xf-asr/v2/api/upload', {
-    method: 'POST',
-    body:   form,
-  });
-
-  if (!uploadRes.ok) {
-    throw new Error(`上传失败 ${uploadRes.status}: ${await uploadRes.text().catch(() => '')}`);
-  }
-
-  const uploadData = await uploadRes.json() as UploadResponse;
-  if (uploadData.code !== '000000' || !uploadData.data?.orderId) {
-    throw new Error(`上传失败: ${uploadData.descInfo ?? uploadData.code}`);
-  }
-
-  const { orderId } = uploadData.data;
-
-  // ── 2. Poll for result ───────────────────────────────────────────────────
+  // ── Poll for result ────────────────────────────────────────────────────────
   const deadline = Date.now() + POLL_TIMEOUT;
 
   while (Date.now() < deadline) {
@@ -92,9 +118,8 @@ export async function transcribeAudio(
 
     const { status, content } = result.data;
     if (status === -1) throw new Error('识别任务失败，请重试');
-    if (status !== 9) continue; // still processing
+    if (status !== 9) continue;
 
-    // ── 3. Parse content ─────────────────────────────────────────────────
     const sentences: Sentence[] = JSON.parse(content);
     return sentences
       .filter(s => s.onebest?.trim())

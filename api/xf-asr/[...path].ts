@@ -1,58 +1,67 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import https from 'https';
+import type { IncomingMessage, ServerResponse } from 'http';
 
 export const config = { api: { bodyParser: false, responseLimit: false } };
 
-function collectBody(req: VercelRequest): Promise<Buffer> {
+function readBody(req: IncomingMessage): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (chunk: Buffer | string) =>
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-    );
+    req.on('data', (c: Buffer | string) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
     req.on('end',   () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
 }
 
-const HOP_BY_HOP = new Set(['connection', 'keep-alive', 'transfer-encoding', 'te',
-  'trailer', 'upgrade', 'proxy-authorization', 'proxy-authenticate']);
+const SKIP = new Set([
+  'host', 'connection', 'keep-alive', 'transfer-encoding',
+  'te', 'trailer', 'upgrade', 'content-length',
+]);
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const subPath = '/' + ((req.query.path as string[]) ?? []).join('/');
-  const qs = Object.entries(req.query)
-    .filter(([k]) => k !== 'path')
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
-    .join('&');
-  const fullPath = subPath + (qs ? `?${qs}` : '');
-
-  const body = await collectBody(req);
-
-  const headers: Record<string, string> = { host: 'raasr.xfyun.cn' };
-  for (const [k, v] of Object.entries(req.headers)) {
-    if (!v || k === 'host' || HOP_BY_HOP.has(k.toLowerCase())) continue;
-    headers[k] = Array.isArray(v) ? v[0] : v;
-  }
-  headers['content-length'] = String(body.length);
-
-  await new Promise<void>((resolve, reject) => {
-    const proxy = https.request(
-      { hostname: 'raasr.xfyun.cn', path: fullPath, method: req.method, headers },
-      (proxyRes) => {
-        res.status(proxyRes.statusCode ?? 200);
-        for (const [k, v] of Object.entries(proxyRes.headers)) {
-          if (!v || HOP_BY_HOP.has(k.toLowerCase())) continue;
-          res.setHeader(k, Array.isArray(v) ? v[0] : v);
-        }
-        const out: Buffer[] = [];
-        proxyRes.on('data', (c: Buffer) => out.push(c));
-        proxyRes.on('end', () => { res.end(Buffer.concat(out)); resolve(); });
-        proxyRes.on('error', reject);
-      },
+export default async function handler(
+  req: IncomingMessage & { query: Record<string, string | string[]> },
+  res: ServerResponse,
+) {
+  try {
+    const rawPath = req.query.path;
+    const subPath = '/' + (
+      Array.isArray(rawPath) ? rawPath.join('/') :
+      typeof rawPath === 'string' ? rawPath : ''
     );
-    proxy.on('error', (err) => {
-      if (!res.headersSent) res.status(502).json({ error: err.message });
-      reject(err);
+
+    const qs = Object.entries(req.query)
+      .filter(([k]) => k !== 'path')
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+      .join('&');
+
+    const url = `https://raasr.xfyun.cn${subPath}${qs ? `?${qs}` : ''}`;
+    const body = await readBody(req);
+
+    const headers: Record<string, string> = {};
+    for (const [k, v] of Object.entries(req.headers)) {
+      if (!v || SKIP.has(k.toLowerCase())) continue;
+      headers[k] = Array.isArray(v) ? v[0] : v;
+    }
+
+    const upstream = await fetch(url, {
+      method:   req.method ?? 'GET',
+      headers,
+      body:     body.length > 0 ? body : undefined,
+      // @ts-ignore — Node 18 fetch accepts this but types may lag
+      redirect: 'manual',
     });
-    proxy.end(body);
-  });
+
+    const responseBody = Buffer.from(await upstream.arrayBuffer());
+
+    res.writeHead(upstream.status, Object.fromEntries(
+      [...upstream.headers.entries()].filter(([k]) =>
+        !['transfer-encoding', 'connection'].includes(k.toLowerCase())
+      )
+    ));
+    res.end(responseBody);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!res.headersSent) {
+      res.writeHead(502, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: msg }));
+    }
+  }
 }

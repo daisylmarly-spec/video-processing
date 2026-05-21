@@ -9,6 +9,7 @@ export interface VpSettings {
   xfAppId:     string;
   xfApiKey:    string;
   xfApiSecret: string;
+  xfAsrSecret: string;   // LFASR SecretKey (录音文件识别 — may differ from APISecret)
   sourceLang:  string;
   targetLang:  string;
 }
@@ -25,6 +26,7 @@ export function loadSettings(): VpSettings {
     xfAppId:     import.meta.env.VITE_XF_APP_ID     ?? '',
     xfApiKey:    import.meta.env.VITE_XF_API_KEY    ?? '',
     xfApiSecret: import.meta.env.VITE_XF_API_SECRET ?? '',
+    xfAsrSecret: import.meta.env.VITE_XF_ASR_SECRET ?? '',
     sourceLang:  'cn',
     targetLang:  'en',
   };
@@ -101,7 +103,15 @@ export const SettingsModal: React.FC<Props> = ({ open, onClose }) => {
           name="xfApiSecret"
           rules={[{ required: true, message: '请输入讯飞 APISecret' }]}
         >
-          <Input.Password prefix={<KeyOutlined />} placeholder="32 位十六进制字符串" />
+          <Input.Password prefix={<KeyOutlined />} placeholder="32 位十六进制字符串（翻译用）" />
+        </Form.Item>
+        <Form.Item
+          label="语音识别 SecretKey"
+          name="xfAsrSecret"
+          rules={[{ required: true, message: '请输入讯飞 LFASR SecretKey' }]}
+          extra="控制台 → 录音文件识别 页面的 SecretKey，与 APISecret 不同"
+        >
+          <Input.Password prefix={<KeyOutlined />} placeholder="32 位十六进制字符串（语音识别用）" />
         </Form.Item>
         <Form.Item
           label="识别语言"

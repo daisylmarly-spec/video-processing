@@ -234,7 +234,7 @@ const VideoProcessingPageInner: React.FC = () => {
     try {
       const segs = await transcribeAudio(
         record.blob, record.name,
-        settings.xfAppId, settings.xfApiKey, settings.xfApiSecret,
+        settings.xfAppId, settings.xfApiKey, settings.xfAsrSecret || settings.xfApiSecret,
         settings.sourceLang,
       );
 

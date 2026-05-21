@@ -2,13 +2,21 @@ import type { IncomingMessage, ServerResponse } from 'http';
 
 export const config = { api: { bodyParser: false, responseLimit: false } };
 
-function readBody(req: IncomingMessage): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    req.on('data', (c: Buffer | string) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
-    req.on('end',   () => resolve(Buffer.concat(chunks)));
-    req.on('error', reject);
-  });
+async function readBody(req: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string));
+  }
+  return Buffer.concat(chunks);
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`timeout: ${label} (${ms}ms)`)), ms)
+    ),
+  ]);
 }
 
 const SKIP = new Set([
@@ -27,7 +35,7 @@ export default async function handler(
       typeof rawPath === 'string' ? rawPath : ''
     );
 
-    const body = await readBody(req);
+    const body = await withTimeout(readBody(req), 30_000, 'body read');
 
     const headers: Record<string, string> = {};
     for (const [k, v] of Object.entries(req.headers)) {
@@ -41,27 +49,31 @@ export default async function handler(
       delete headers['x-date'];
     }
 
-    const upstream = await fetch(`https://ntrans.xfyun.cn${subPath}`, {
-      method:   req.method ?? 'POST',
-      headers,
-      body:     body.length > 0 ? body : undefined,
-      // @ts-ignore
-      redirect: 'manual',
-    });
+    const upstream = await withTimeout(
+      fetch(`https://ntrans.xfyun.cn${subPath}`, {
+        method:  req.method ?? 'POST',
+        headers,
+        body:    body.length > 0 ? body : undefined,
+      }),
+      50_000,
+      'upstream fetch',
+    );
 
-    const responseBody = Buffer.from(await upstream.arrayBuffer());
+    const responseBody = Buffer.from(
+      await withTimeout(upstream.arrayBuffer(), 20_000, 'response read')
+    );
 
-    res.writeHead(upstream.status, Object.fromEntries(
-      [...upstream.headers.entries()].filter(([k]) =>
-        !['transfer-encoding', 'connection'].includes(k.toLowerCase())
-      )
-    ));
+    const resHeaders: Record<string, string> = {};
+    for (const [k, v] of upstream.headers.entries()) {
+      if (!SKIP.has(k.toLowerCase())) resHeaders[k] = v;
+    }
+    res.writeHead(upstream.status, resHeaders);
     res.end(responseBody);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (!res.headersSent) {
       res.writeHead(502, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ error: msg }));
+      res.end(JSON.stringify({ error: `xf-mt proxy: ${msg}` }));
     }
   }
 }

@@ -2,13 +2,21 @@ import type { IncomingMessage, ServerResponse } from 'http';
 
 export const config = { api: { bodyParser: false, responseLimit: false } };
 
-function readBody(req: IncomingMessage): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    req.on('data', (c: Buffer | string) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
-    req.on('end',   () => resolve(Buffer.concat(chunks)));
-    req.on('error', reject);
-  });
+async function readBody(req: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string));
+  }
+  return Buffer.concat(chunks);
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`timeout: ${label} (${ms}ms)`)), ms)
+    ),
+  ]);
 }
 
 const SKIP = new Set([
@@ -26,14 +34,14 @@ export default async function handler(
       Array.isArray(rawPath) ? rawPath.join('/') :
       typeof rawPath === 'string' ? rawPath : ''
     );
-
     const qs = Object.entries(req.query)
       .filter(([k]) => k !== 'path')
       .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
       .join('&');
-
     const url = `https://raasr.xfyun.cn${subPath}${qs ? `?${qs}` : ''}`;
-    const body = await readBody(req);
+
+    // Read body with 30s timeout (hangs if Vercel stream isn't ready)
+    const body = await withTimeout(readBody(req), 30_000, 'body read');
 
     const headers: Record<string, string> = {};
     for (const [k, v] of Object.entries(req.headers)) {
@@ -41,27 +49,32 @@ export default async function handler(
       headers[k] = Array.isArray(v) ? v[0] : v;
     }
 
-    const upstream = await fetch(url, {
-      method:   req.method ?? 'GET',
-      headers,
-      body:     body.length > 0 ? body : undefined,
-      // @ts-ignore — Node 18 fetch accepts this but types may lag
-      redirect: 'manual',
-    });
+    // Forward to Xunfei with 50s timeout (Vercel kills at 60s)
+    const upstream = await withTimeout(
+      fetch(url, {
+        method:  req.method ?? 'GET',
+        headers,
+        body:    body.length > 0 ? body : undefined,
+      }),
+      50_000,
+      'upstream fetch',
+    );
 
-    const responseBody = Buffer.from(await upstream.arrayBuffer());
+    const responseBody = Buffer.from(
+      await withTimeout(upstream.arrayBuffer(), 20_000, 'response read')
+    );
 
-    res.writeHead(upstream.status, Object.fromEntries(
-      [...upstream.headers.entries()].filter(([k]) =>
-        !['transfer-encoding', 'connection'].includes(k.toLowerCase())
-      )
-    ));
+    const resHeaders: Record<string, string> = {};
+    for (const [k, v] of upstream.headers.entries()) {
+      if (!SKIP.has(k.toLowerCase())) resHeaders[k] = v;
+    }
+    res.writeHead(upstream.status, resHeaders);
     res.end(responseBody);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (!res.headersSent) {
       res.writeHead(502, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ error: msg }));
+      res.end(JSON.stringify({ error: `xf-asr proxy: ${msg}` }));
     }
   }
 }

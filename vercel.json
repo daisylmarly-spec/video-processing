@@ -2,6 +2,9 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "functions": {
+    "api/**/*.ts": { "maxDuration": 60 }
+  },
   "rewrites": [
     { "source": "/api/xf-asr/:path*", "destination": "/api/xf-asr/[...path]" },
     { "source": "/api/xf-mt/:path*",  "destination": "/api/xf-mt/[...path]"  },

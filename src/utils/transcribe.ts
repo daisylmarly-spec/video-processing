@@ -1,6 +1,12 @@
 import type { TranscriptSegment } from '../pages/video-processing/components/TranscriptEditor';
 import { md5Hex, hmacMd5Base64 } from './md5';
 
+// In production, set VITE_XF_PROXY_BASE to the Cloudflare Worker URL.
+// In local dev, leave unset — the Vite dev proxy handles /api/xf-asr/*.
+const ASR_BASE = import.meta.env.VITE_XF_PROXY_BASE
+  ? `${import.meta.env.VITE_XF_PROXY_BASE}/xf-asr`
+  : '/api/xf-asr';
+
 interface UploadResponse {
   code: string;
   descInfo: string;
@@ -71,7 +77,7 @@ async function uploadFile(
 
     form.append('content', chunk, fileName);
 
-    const res = await fetch('/api/xf-asr/v2/api/upload', { method: 'POST', body: form });
+    const res = await fetch(`${ASR_BASE}/v2/api/upload`, { method: 'POST', body: form });
     if (!res.ok) {
       throw new Error(`上传失败 ${res.status}: ${await res.text().catch(() => '')}`);
     }
@@ -107,7 +113,7 @@ export async function transcribeAudio(
     const ts2    = Math.floor(Date.now() / 1000).toString();
     const sig2   = buildSigna(appId, apiSecret, ts2);
     const params = new URLSearchParams({ orderId, ts: ts2, signa: sig2, app_id: appId });
-    const res    = await fetch(`/api/xf-asr/v2/api/getResult?${params}`);
+    const res    = await fetch(`${ASR_BASE}/v2/api/getResult?${params}`);
 
     if (!res.ok) continue;
 

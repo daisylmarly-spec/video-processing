@@ -1,5 +1,11 @@
 import type { TranscriptSegment } from '../pages/video-processing/components/TranscriptEditor';
 
+// In production, set VITE_XF_PROXY_BASE to the Cloudflare Worker URL.
+// In local dev, leave unset — the Vite dev proxy handles /api/xf-mt/*.
+const MT_BASE = import.meta.env.VITE_XF_PROXY_BASE
+  ? `${import.meta.env.VITE_XF_PROXY_BASE}/xf-mt`
+  : '/api/xf-mt';
+
 interface NtransRequest {
   common:   { app_id: string };
   business: { from: string; to: string };
@@ -73,7 +79,7 @@ async function translateChunk(
   const bodyJson = JSON.stringify(body);
   const headers  = await buildAuthHeaders(apiKey, apiSecret, bodyJson);
 
-  const res = await fetch('/api/xf-mt/v2/ots', {
+  const res = await fetch(`${MT_BASE}/v2/ots`, {
     method:  'POST',
     headers,
     body:    bodyJson,

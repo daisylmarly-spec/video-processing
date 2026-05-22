@@ -1,5 +1,4 @@
 import type { TranscriptSegment } from '../pages/video-processing/components/TranscriptEditor';
-import { md5Hex } from './md5';
 
 const ASR_BASE = import.meta.env.VITE_XF_PROXY_BASE
   ? `${import.meta.env.VITE_XF_PROXY_BASE}/xf-asr`
@@ -111,7 +110,7 @@ export async function transcribeAudio(
   appId:           string,
   accessKeySecret: string,
   accessKeyId:     string,
-  sourceLang:      string = 'cn',
+  _sourceLang:     string = 'cn',
 ): Promise<TranscriptSegment[]> {
   const duration = await getMediaDuration(blob);
 

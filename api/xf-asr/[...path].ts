@@ -1,80 +1,55 @@
-import type { IncomingMessage, ServerResponse } from 'http';
+// Edge Function — no 4.5 MB body limit, streams large video/audio files directly.
+export const config = { runtime: 'edge' };
 
-export const config = { api: { bodyParser: false, responseLimit: false } };
-
-async function readBody(req: IncomingMessage): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string));
-  }
-  return Buffer.concat(chunks);
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`timeout: ${label} (${ms}ms)`)), ms)
-    ),
-  ]);
-}
+const CORS = {
+  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': '*',
+};
 
 const SKIP = new Set([
   'host', 'connection', 'keep-alive', 'transfer-encoding',
-  'te', 'trailer', 'upgrade', 'content-length',
+  'origin', 'referer', 'cf-connecting-ip', 'cf-ray',
+  'x-forwarded-for', 'x-forwarded-proto', 'x-real-ip',
 ]);
 
-export default async function handler(
-  req: IncomingMessage & { query: Record<string, string | string[]> },
-  res: ServerResponse,
-) {
+export default async function handler(req: Request): Promise<Response> {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: CORS });
+  }
+
+  const url     = new URL(req.url);
+  const prefix  = '/api/xf-asr';
+  const subPath = url.pathname.startsWith(prefix) ? url.pathname.slice(prefix.length) : '';
+
+  const upstreamUrl = `https://raasr.xfyun.cn${subPath}${url.search}`;
+
+  const headers = new Headers();
+  for (const [k, v] of req.headers.entries()) {
+    if (!SKIP.has(k.toLowerCase())) headers.set(k, v);
+  }
+  headers.set('host', 'raasr.xfyun.cn');
+
   try {
-    const rawPath = req.query.path;
-    const subPath = '/' + (
-      Array.isArray(rawPath) ? rawPath.join('/') :
-      typeof rawPath === 'string' ? rawPath : ''
-    );
-    const qs = Object.entries(req.query)
-      .filter(([k]) => k !== 'path')
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
-      .join('&');
-    const url = `https://raasr.xfyun.cn${subPath}${qs ? `?${qs}` : ''}`;
+    const upstream = await fetch(upstreamUrl, {
+      method:  req.method,
+      headers,
+      body:    req.body,
+      // @ts-ignore — required for streaming request bodies in Node 18+
+      duplex:  'half',
+    });
 
-    // Read body with 30s timeout (hangs if Vercel stream isn't ready)
-    const body = await withTimeout(readBody(req), 30_000, 'body read');
+    const resHeaders = new Headers(upstream.headers);
+    resHeaders.delete('transfer-encoding');
+    resHeaders.delete('connection');
+    for (const [k, v] of Object.entries(CORS)) resHeaders.set(k, v);
 
-    const headers: Record<string, string> = {};
-    for (const [k, v] of Object.entries(req.headers)) {
-      if (!v || SKIP.has(k.toLowerCase())) continue;
-      headers[k] = Array.isArray(v) ? v[0] : v;
-    }
-
-    // Forward to Xunfei with 50s timeout (Vercel kills at 60s)
-    const upstream = await withTimeout(
-      fetch(url, {
-        method:  req.method ?? 'GET',
-        headers,
-        body:    body.length > 0 ? body : undefined,
-      }),
-      50_000,
-      'upstream fetch',
-    );
-
-    const responseBody = Buffer.from(
-      await withTimeout(upstream.arrayBuffer(), 20_000, 'response read')
-    );
-
-    const resHeaders: Record<string, string> = {};
-    for (const [k, v] of upstream.headers.entries()) {
-      if (!SKIP.has(k.toLowerCase())) resHeaders[k] = v;
-    }
-    res.writeHead(upstream.status, resHeaders);
-    res.end(responseBody);
+    return new Response(upstream.body, { status: upstream.status, headers: resHeaders });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (!res.headersSent) {
-      res.writeHead(502, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ error: `xf-asr proxy: ${msg}` }));
-    }
+    return new Response(JSON.stringify({ error: `xf-asr proxy: ${msg}` }), {
+      status:  502,
+      headers: { 'Content-Type': 'application/json', ...CORS },
+    });
   }
 }

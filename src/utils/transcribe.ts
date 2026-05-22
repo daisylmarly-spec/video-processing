@@ -1,41 +1,46 @@
 import type { TranscriptSegment } from '../pages/video-processing/components/TranscriptEditor';
-import { md5Hex, hmacMd5Base64 } from './md5';
+import { md5Hex } from './md5';
 
-// In production, set VITE_XF_PROXY_BASE to the Cloudflare Worker URL.
-// In local dev, leave unset — the Vite dev proxy handles /api/xf-asr/*.
 const ASR_BASE = import.meta.env.VITE_XF_PROXY_BASE
   ? `${import.meta.env.VITE_XF_PROXY_BASE}/xf-asr`
   : '/api/xf-asr';
 
+// v2 LFASR: signa = Base64(HmacSHA1(MD5(appId + ts), secretKey))
+async function buildSigna(appId: string, secretKey: string, ts: string): Promise<string> {
+  const enc = new TextEncoder();
+  const m1  = md5Hex(appId + ts);
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(secretKey),
+    { name: 'HMAC', hash: 'SHA-1' },
+    false, ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(m1));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+}
+
 interface UploadResponse {
-  code: string;
+  code:     string;   // '000000' = success
   descInfo: string;
-  data?: { orderId: string };
+  content?: { orderId: string; taskEstimateTime?: number };
 }
 
 interface Sentence {
-  sn:      number;
-  begTime: string;
-  endTime: string;
-  onebest: string;
+  sn:       number;
+  begTime:  string;
+  endTime:  string;
+  onebest:  string;
+  speaker?: string;
 }
 
 interface ResultResponse {
-  code: string;
+  code:     string;
   descInfo: string;
-  data?: {
-    orderId: string;
-    status:  number;   // 9 = done, -1 = error
-    content: string;   // JSON string → Sentence[]
+  content?: {
+    orderInfo: { orderId: string; status: number; failType?: number };
+    orderResult: string;   // JSON string → Sentence[]
   };
 }
 
-function buildSigna(appId: string, apiSecret: string, ts: string) {
-  const m1 = md5Hex(appId + ts);
-  return hmacMd5Base64(apiSecret, m1);
-}
-
-const CHUNK_SIZE    = 3 * 1024 * 1024; // 3 MB — safely under Vercel's 4.5 MB request limit
 const POLL_INTERVAL = 3000;
 const POLL_TIMEOUT  = 10 * 60 * 1000;
 
@@ -43,53 +48,40 @@ async function uploadFile(
   blob:       Blob,
   fileName:   string,
   appId:      string,
-  apiSecret:  string,
+  secretKey:  string,
   sourceLang: string,
 ): Promise<string> {
-  const ts          = Math.floor(Date.now() / 1000).toString();
-  const signa       = buildSigna(appId, apiSecret, ts);
-  const contentType = blob.type.startsWith('video/') ? 'video' : 'audio';
-  const totalSize   = blob.size;
-  const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
+  const ts    = Math.floor(Date.now() / 1000).toString();
+  const signa = await buildSigna(appId, secretKey, ts);
 
-  let orderId = '';
+  // v2 API: all auth/meta params go in the query string; body is raw audio bytes
+  const qs = new URLSearchParams({
+    appId, ts, signa,
+    fileName,
+    fileSize:  String(blob.size),
+    duration:  '0',
+    language:  sourceLang,
+    audioMode: 'fileStream',
+  }).toString();
 
-  for (let i = 0; i < totalChunks; i++) {
-    const start = i * CHUNK_SIZE;
-    const end   = Math.min(start + CHUNK_SIZE, totalSize);
-    const chunk = totalChunks === 1 ? blob : blob.slice(start, end);
+  const arrayBuffer = await blob.arrayBuffer();
 
-    const form = new FormData();
-    form.append('app_id',               appId);
-    form.append('ts',                   ts);
-    form.append('signa',                signa);
-    form.append('file_name',            fileName);
-    form.append('file_len',             String(totalSize));
-    form.append('has_participle',       'false');
-    form.append('language',             sourceLang);
-    form.append('has_seperate_language','false');
-    form.append('content_type',         contentType);
+  const res = await fetch(`${ASR_BASE}/v2/api/upload?${qs}`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body:    arrayBuffer,
+  });
 
-    if (totalChunks > 1) {
-      form.append('file_piece_sn', String(i));
-      form.append('piece_len',     String(chunk.size));
-    }
-
-    form.append('content', chunk, fileName);
-
-    const res = await fetch(`${ASR_BASE}/v2/api/upload`, { method: 'POST', body: form });
-    if (!res.ok) {
-      throw new Error(`上传失败 ${res.status}: ${await res.text().catch(() => '')}`);
-    }
-
-    const data = await res.json() as UploadResponse;
-    if (data.code !== '000000') {
-      throw new Error(`上传失败: ${data.descInfo ?? data.code}`);
-    }
-
-    if (data.data?.orderId) orderId = data.data.orderId;
+  if (!res.ok) {
+    throw new Error(`上传失败 ${res.status}: ${await res.text().catch(() => '')}`);
   }
 
+  const data = await res.json() as UploadResponse;
+  if (data.code !== '000000') {
+    throw new Error(`上传失败: ${data.descInfo ?? data.code}`);
+  }
+
+  const orderId = data.content?.orderId;
   if (!orderId) throw new Error('上传完成但未获取到任务ID');
   return orderId;
 }
@@ -99,34 +91,33 @@ export async function transcribeAudio(
   fileName:   string,
   appId:      string,
   _apiKey:    string,
-  apiSecret:  string,
+  secretKey:  string,
   sourceLang: string = 'cn',
 ): Promise<TranscriptSegment[]> {
-  const orderId = await uploadFile(blob, fileName, appId, apiSecret, sourceLang);
+  const orderId = await uploadFile(blob, fileName, appId, secretKey, sourceLang);
 
-  // ── Poll for result ────────────────────────────────────────────────────────
   const deadline = Date.now() + POLL_TIMEOUT;
 
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, POLL_INTERVAL));
 
     const ts2    = Math.floor(Date.now() / 1000).toString();
-    const sig2   = buildSigna(appId, apiSecret, ts2);
-    const params = new URLSearchParams({ orderId, ts: ts2, signa: sig2, app_id: appId });
+    const sig2   = await buildSigna(appId, secretKey, ts2);
+    const params = new URLSearchParams({ orderId, appId, ts: ts2, signa: sig2 });
     const res    = await fetch(`${ASR_BASE}/v2/api/getResult?${params}`);
 
     if (!res.ok) continue;
 
     const result = await res.json() as ResultResponse;
-    if (result.code !== '000000' || !result.data) {
+    if (result.code !== '000000' || !result.content) {
       throw new Error(`查询失败: ${result.descInfo ?? result.code}`);
     }
 
-    const { status, content } = result.data;
+    const { status } = result.content.orderInfo;
     if (status === -1) throw new Error('识别任务失败，请重试');
-    if (status !== 9) continue;
+    if (status !== 4)  continue;   // 4 = done
 
-    const sentences: Sentence[] = JSON.parse(content);
+    const sentences: Sentence[] = JSON.parse(result.content.orderResult);
     return sentences
       .filter(s => s.onebest?.trim())
       .map((s, i) => ({

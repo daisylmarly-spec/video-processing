@@ -22,13 +22,13 @@ export default async function handler(req: Request): Promise<Response> {
   const prefix  = '/api/xf-asr';
   const subPath = url.pathname.startsWith(prefix) ? url.pathname.slice(prefix.length) : '';
 
-  const upstreamUrl = `https://raasr.xfyun.cn${subPath}${url.search}`;
+  const upstreamUrl = `https://office-api-ist-dx.iflyaisol.com${subPath}${url.search}`;
 
   const headers = new Headers();
   for (const [k, v] of req.headers.entries()) {
     if (!SKIP.has(k.toLowerCase())) headers.set(k, v);
   }
-  headers.set('host', 'raasr.xfyun.cn');
+  headers.set('host', 'office-api-ist-dx.iflyaisol.com');
 
   try {
     const upstream = await fetch(upstreamUrl, {

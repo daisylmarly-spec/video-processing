@@ -54,7 +54,7 @@ export default function HomePage() {
       setStage('transcribing')
       const segs = await transcribeAudio(
         blob, name,
-        settings.xfAppId, settings.xfApiKey, settings.xfAsrSecret || settings.xfApiSecret,
+        settings.xfAppId, settings.xfApiKey, settings.xfApiSecret,
         settings.sourceLang,
       )
       localStorage.setItem(`vp_transcript_${id}`, JSON.stringify(segs))
